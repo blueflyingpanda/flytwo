@@ -1,2 +1,2 @@
 # flytwo
-Flyone client to get cheapest flights
+Flyone client to get the cheapest flights

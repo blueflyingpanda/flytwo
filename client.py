@@ -1,8 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 import aiohttp
+
+
+class Direction:
+    FORWARD = 1
+    BACKWARD = 2
 
 
 @dataclass
@@ -10,6 +16,15 @@ class Airport:
     code: str = ''
     name: str = ''
     country: str = ''
+
+
+@dataclass
+class Flight:
+    from_airport: Airport
+    to_airport: Airport
+    travel_date: str
+    currency: str
+    price: Decimal
 
 
 class FlyoneClient:
@@ -53,7 +68,7 @@ class FlyoneClient:
                 result = response_data['result']
 
                 if not result['isSuccess']:
-                    raise Exception(f'{result['code']}: {result['msgText']}')
+                    raise Exception(f'{result["code"]}: {result["msgText"]}')
 
                 return response_data
 
@@ -83,8 +98,8 @@ class FlyoneClient:
             self,
             *,
             dep: str, arr: str, dep_date: str, arr_date: str,
-            currency: str = '', before: int = 10, after: int = 10, passengers: int = 1
-    ) -> dict[str, Any]:
+            currency: str = '', before: int = 16, after: int = 16, passengers: int = 1
+    ) -> tuple[list[Flight], list[Flight]]:
         """before/after window must not exceed 32 days"""
         payload = {
             'reservationType': 1,
@@ -118,4 +133,37 @@ class FlyoneClient:
             'currencyCode': currency or self.default_currency,
         }
 
-        return await self.request('search/schedule-flights', payload)
+        result = await self.request('search/schedule-flights', payload)
+
+        flights_forwards: list[Flight] = []
+        flights_backward: list[Flight] = []
+
+        airport_by_code = await self.airport_by_code
+        dep_airport: Airport = airport_by_code[dep]
+        arr_airport: Airport = airport_by_code[arr]
+
+        for direction in result['flightSchedule']:
+            is_back = direction['direction'] == Direction.BACKWARD
+            days = []
+            year = direction['year']
+
+            for month in direction['month']:
+                month_num = month['month']
+                days.extend(
+                    [
+                        Flight(
+                            from_airport=arr_airport if is_back else dep_airport,
+                            to_airport=dep_airport if is_back else arr_airport,
+                            travel_date=f'{day["date"]}.{month_num}.{year}',
+                            currency=currency,
+                            price=Decimal(day["price"])
+                        )
+                        for day in month['days'] if day['isFlightAvailable']]
+                )
+
+            if is_back:
+                flights_backward = days
+            else:
+                flights_forwards = days
+
+        return flights_forwards, flights_backward

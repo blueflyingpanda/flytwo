@@ -16,5 +16,10 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
+    entry_points={
+            'console_scripts': [
+                'flytwo=flytwo.cli:cli',  # Now it points to the 'cli' group
+            ],
+        },
     python_requires='>=3.10',  # Minimum Python version requirement
 )

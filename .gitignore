@@ -163,3 +163,7 @@ cython_debug/
 
 # OSX
 .DS_Store
+
+# YC
+yc_build.zip
+yc_build/

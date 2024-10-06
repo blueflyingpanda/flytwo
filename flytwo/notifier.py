@@ -45,11 +45,17 @@ class TgBotNotifier:
                     print(await response.json())
 
 
-async def main():
+async def main(*args, **kwargs):
     fc = FlyoneClient()
 
+    travel_date = environ.get('TRAVEL_DATE')
+
     result = await fc.get_flights(
-        dep='RMO', arr='EVN', dep_date='2024-10-30', arr_date='2024-10-30', currency='EUR'
+        dep=environ.get('ORIGIN'),
+        arr=environ.get('DESTINATION'),
+        dep_date=travel_date,
+        arr_date=travel_date,
+        currency='EUR'
     )
 
     forward, backward = result

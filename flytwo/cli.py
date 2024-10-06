@@ -14,7 +14,7 @@ class Color:
 
 
 def display_flights(flights: list[Flight], price_limit: Decimal) -> None:
-    flights = [flight for flight in flights if price_limit is None or flight.price < price_limit]
+    flights = [flight for flight in flights if price_limit is None or flight.price <= price_limit]
     if not flights:
         return
 

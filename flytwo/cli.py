@@ -4,7 +4,7 @@ from typing import Any
 
 import click
 
-from client import FlyoneClient, Airport, Flight
+from flytwo.client import FlyoneClient, Airport, Flight
 
 
 class Color:
@@ -99,6 +99,7 @@ async def run_flights(origin: str, destination: str, currency: str, travel_date:
 @click.option('--price', type=Decimal, help='Max price of the tickets')
 @click.option('--limit', default=-1, type=int, help='Limit of records to fetch (default: all)')
 def fares(origin: str, currency: str, travel_date: str, price: Decimal, limit: int):
+    """Fetch fares from specified origin."""
     asyncio.run(run_fares(origin, currency, travel_date, price, limit))
 
 
@@ -109,18 +110,19 @@ def fares(origin: str, currency: str, travel_date: str, price: Decimal, limit: i
 @click.option('--travel_date', required=True, type=str, help='Date in YYYY-MM-DD format')
 @click.option('--price', type=Decimal, help='Max price of the tickets')
 def flights(origin: str, destination: str, currency: str, travel_date: str, price: Decimal):
+    """Fetch flights to specified destinations."""
     asyncio.run(run_flights(origin, destination, currency, travel_date, price))
 
 
 @click.group()
 def cli():
-    """A simple CLI tool with fares and flights commands."""
+    """A CLI tool with fares and flights commands."""
 
+cli.add_command(fares)
+cli.add_command(flights)
 
 if __name__ == '__main__':
     # TODO cloud function trigger that sends request to bot to inform users about cheap flights
     # TODO public API to build a web-site on top of it
     # TODO DB to analyse price changes and to store users subscriptions
-    cli.add_command(fares)
-    cli.add_command(flights)
     cli()

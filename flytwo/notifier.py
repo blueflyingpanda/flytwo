@@ -98,7 +98,7 @@ async def main(*args, **kwargs):
         msg = await notifier.form_msg(backward)
         await notifier.send_msg(f'Backward flights:\n{msg}')
 
-        await notifier.send_msg(f'Price limit: {notifier.price_limit} EUR')
+        await notifier.send_msg(f'Price limit: {price_limit} EUR\nTravel date: {travel_date}')
 
 
 if __name__ == '__main__':

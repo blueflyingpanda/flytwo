@@ -122,8 +122,4 @@ cli.add_command(fares)
 cli.add_command(flights)
 
 if __name__ == '__main__':
-    # TODO DB to store chat subscriptions
-    # CHATS id: pk, chat_id: str,
-    # ROUTES id: pk, src: str, dst: str, travel_date: date, price: int, chat_id: fk
-    # TODO not send msg that already been sent
     cli()

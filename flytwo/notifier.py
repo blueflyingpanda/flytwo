@@ -6,8 +6,8 @@ from os import environ
 import aiohttp
 
 from client import FlyoneClient, Flight
+from conf import BOT_TOKEN
 
-BOT_TOKEN = environ.get('BOT_TOKEN')
 
 class TgBotNotifier:
 
@@ -45,8 +45,6 @@ class TgBotNotifier:
     async def _check_sent(self, msg: str) -> bool:
         # TODO DB to store chat subscriptions
         # TODO not send msg that already been sent by storing msg_hash in DIRECTIONS and comparing Forward flights msg hash with the one in db
-        # CHATS id: pk, chat_id: str,
-        # DIRECTIONS id: pk, src: str, dst: str, travel_date: date, price: int, chat_id: fk, msg_hash
         return self._get_hash(msg) in set()
 
     async def send_msg(self, msg: str, no_repeat: bool = False) -> bool:

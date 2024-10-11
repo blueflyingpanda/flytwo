@@ -1,4 +1,3 @@
-from . import client
+from . import client, conf
 
-__all__ = ['client']
-
+__all__ = ['client', 'conf']

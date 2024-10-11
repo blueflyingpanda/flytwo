@@ -1,15 +1,13 @@
 import asyncio
 import json
 import logging
-from os import environ
 
 import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram import Router
 from aiogram.filters import Command
 
-BOT_TOKEN = environ.get('BOT_TOKEN')
-CLOUD_FUNC_URL = environ.get('CLOUD_FUNC_URL')
+from conf import BOT_TOKEN, CLOUD_FUNC_URL
 
 logging.basicConfig(level=logging.INFO)
 

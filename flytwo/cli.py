@@ -4,6 +4,7 @@ from typing import Any
 
 import click
 
+# to work correctly as a flytwo command line utility
 from flytwo.client import FlyoneClient, Airport, Flight
 
 

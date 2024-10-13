@@ -5,3 +5,5 @@ sqlalchemy
 asyncpg
 alembic
 python-dotenv
+redis
+pytest

@@ -9,3 +9,9 @@ DB_PASS = environ.get('DB_PASS')
 DB_HOST = environ.get('DB_HOST')
 DB_PORT = environ.get('DB_PORT')
 DB_NAME = environ.get('DB_NAME')
+
+REDIS_PASS = environ.get('REDIS_PASS')
+REDIS_HOST = environ.get('REDIS_HOST')
+REDIS_PORT = environ.get('REDIS_PORT')
+
+YC_CERT = environ.get('YC_CERT')

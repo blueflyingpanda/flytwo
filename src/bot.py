@@ -21,6 +21,7 @@ async def cmd_help(message: types.Message):
     chat_id = message.chat.id
     await message.reply(f'Your chat ID is: {chat_id}')
 
+
 @router.message(Command(commands=['start']))
 async def cmd_start(message: types.Message):
     await message.reply('Manual launch started ...')

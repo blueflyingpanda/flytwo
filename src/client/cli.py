@@ -5,7 +5,7 @@ from typing import Any
 import click
 
 # to work correctly as a flytwo command line utility
-from flytwo.client import FlyoneClient, Airport, Flight
+from client.client import FlyoneClient, Airport, Flight
 
 
 class Color:
@@ -118,6 +118,7 @@ def flights(origin: str, destination: str, currency: str, travel_date: str, pric
 @click.group()
 def cli():
     """A CLI tool with fares and flights commands."""
+
 
 cli.add_command(fares)
 cli.add_command(flights)

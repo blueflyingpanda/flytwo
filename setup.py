@@ -9,7 +9,8 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/blueflyingpanda/flytwo',  # Your library URL
-    packages=find_packages(),  # Automatically find packages in the directory
+    packages=find_packages('src'),  # Automatically find packages in the directory
+    package_dir={'': 'src'},  # Map the root package to 'src'
     install_requires=['aiohttp'],  # Dependencies
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -18,8 +19,8 @@ setup(
     ],
     entry_points={
             'console_scripts': [
-                'flytwo=flytwo.cli:cli',  # Now it points to the 'cli' group
+                'flytwo=client.cli:cli',  # Now it points to the 'cli' group
             ],
         },
-    python_requires='>=3.10',  # Minimum Python version requirement
+    python_requires='>=3.11',  # Minimum Python version requirement
 )

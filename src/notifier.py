@@ -5,12 +5,11 @@ from os import environ
 
 import aiohttp
 
-from client import FlyoneClient, Flight
+from client.client import FlyoneClient, Flight
 from conf import BOT_TOKEN
 
 
 class TgBotNotifier:
-
 
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
 

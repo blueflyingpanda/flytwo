@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
             'console_scripts': [
-                'flytwo=client.cli:cli',  # Now it points to the 'cli' group
+                'flytwo=fly_client.cli:cli',  # Now it points to the 'cli' group
             ],
         },
     python_requires='>=3.11',  # Minimum Python version requirement

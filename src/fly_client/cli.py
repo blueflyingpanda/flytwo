@@ -5,7 +5,7 @@ from typing import Any
 import click
 
 # to work correctly as a flytwo command line utility
-from client.client import FlyoneClient, Airport, Flight
+from fly_client.client import FlyoneClient, Airport, Flight
 
 
 class Color:

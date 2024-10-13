@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 from conf import DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME
 
 
-ALCHEMY_ECHO = True
+ALCHEMY_ECHO = False
 DESCRIBE = False
 
 

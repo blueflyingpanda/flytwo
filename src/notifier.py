@@ -5,7 +5,7 @@ from os import environ
 
 import aiohttp
 
-from client.client import FlyoneClient, Flight
+from fly_client.client import FlyoneClient, Flight
 from conf import BOT_TOKEN
 
 

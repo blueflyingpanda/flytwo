@@ -1,5 +1,3 @@
-import db
-
 from logging.config import fileConfig
 
 from alembic import context
@@ -8,6 +6,8 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 load_dotenv()  # to access .env vars
+
+import db  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

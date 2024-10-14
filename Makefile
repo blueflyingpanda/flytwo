@@ -14,5 +14,12 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BUILD_ARC)
 
+
+migration:
+	alembic revision --autogenerate
+
+migrate:
+	alembic upgrade head
+
 # This is a phony target, meaning it doesn't represent a file
-.PHONY: build clean
+.PHONY: build clean migration migrate

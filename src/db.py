@@ -1,6 +1,6 @@
 import asyncio
 
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, UniqueConstraint, CheckConstraint
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -33,9 +33,14 @@ class Direction(Base):
     travel_date: Date = Column(Date, nullable=False)
     price: int = Column(Integer, nullable=False)
     chat_id: int = Column(Integer, ForeignKey('chats.id'), nullable=False)
-    msg_hash: str = Column(String, nullable=False, default='')
 
     chat = relationship('Chat', back_populates='directions')
+
+    __table_args__ = (
+        UniqueConstraint('src', 'dst', 'chat_id', name='uix_src_dst_chat_id'),
+        CheckConstraint('length(src) = 3', name='chk_src_length'),
+        CheckConstraint('length(dst) = 3', name='chk_dst_length'),
+    )
 
 
 connection_string = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'

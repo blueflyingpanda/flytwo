@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 from decimal import Decimal
 from os import environ
 
@@ -34,26 +33,8 @@ class TgBotNotifier:
 
         return '\n'.join(msgs) or 'not found 🥲'
 
-    async def _get_hash(self, msg: str) -> str:
-        # Create a new sha256 hash object
-        msg_hash = hashlib.sha256()
-        msg_hash.update(msg.encode())
 
-        return msg_hash.hexdigest()
-
-    async def _check_sent(self, msg: str) -> bool:
-        # TODO DB to store chat subscriptions
-        # TODO not send msg that already been sent by storing msg_hash in DIRECTIONS and comparing Forward flights msg hash with the one in db
-        return self._get_hash(msg) in set()
-
-    async def send_msg(self, msg: str, no_repeat: bool = False) -> bool:
-
-        if no_repeat:
-            if await self._check_sent(msg):
-                return False
-            else:
-                # TODO update msg_hash
-                pass
+    async def send_msg(self, msg: str):
 
         payload = {'text': f'{msg}'}
 
@@ -61,10 +42,8 @@ class TgBotNotifier:
             payload['chat_id'] = chat_id
 
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.url, json=payload, ssl=False) as response:
-                    print(await response.json())
-
-        return True
+                async with session.post(self.url, json=payload, ssl=False):
+                    pass
 
 
 async def main(*args, **kwargs):
@@ -89,7 +68,7 @@ async def main(*args, **kwargs):
 
     msg = await notifier.form_msg(forward)
 
-    sent = await notifier.send_msg(f'Forward flights:\n{msg}', no_repeat=True)
+    sent = await notifier.send_msg(f'Forward flights:\n{msg}')
 
     if sent:
         msg = await notifier.form_msg(backward)

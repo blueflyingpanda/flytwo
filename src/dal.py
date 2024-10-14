@@ -10,6 +10,13 @@ class DataAccessLayer:
         self.model = model
         self.session = session
 
+    async def get_by(self, **kwargs) -> RowMapping:
+        stmt = select(self.model).filter_by(**kwargs)
+        result = await self.session.execute(stmt)
+        instance = result.scalars().first()
+
+        return instance
+
     async def get_or_create(
             self, defaults: dict[str, Any] | None = None, **kwargs
     ) -> tuple[Row | RowMapping, bool]:

@@ -43,7 +43,7 @@ async def cmd_help(message: types.Message):
 async def cmd_start(message: types.Message):
     async with ASession() as session:
         dal = DataAccessLayer(Chat, session)
-        _, created = await dal.get_or_create(chat_id=message.chat.id)
+        _, created = await dal.get_or_create(tg_id=message.chat.id)
 
     if created:
         await message.reply(f'Bot started! Use /help for more info.')
@@ -55,7 +55,7 @@ async def cmd_start(message: types.Message):
 async def cmd_stop(message: types.Message):
     async with ASession() as session:
         dal = DataAccessLayer(Chat, session)
-        deleted = await dal.delete(chat_id=message.chat.id)
+        deleted = await dal.delete(tg_id=message.chat.id)
 
     if deleted:
         await message.reply(f'Bot stopped!')
@@ -91,17 +91,26 @@ async def cmd_subscribe(message: types.Message):
         await message.reply('Invalid airport code! Should be 3 letters.')
 
     async with ASession() as session:
-        dal = DataAccessLayer(Direction, session)
-        direction, created = await dal.get_or_create(
-            chat_id=message.chat.id, src=src.upper(), dst=dst.upper(), travel_date=travel_date,
+        dal_chat = DataAccessLayer(Chat, session)
+        chat = await dal_chat.get_by(tg_id=message.chat.id)
+
+        if chat is None:
+            await message.reply('Bot was not started yet!')
+            return
+
+        dal_dir = DataAccessLayer(Direction, session)
+        direction, created = await dal_dir.get_or_create(
+            chat_id=chat.id, src=src.upper(), dst=dst.upper(),
             defaults={'travel_date': travel_date, 'price': price}
         )
 
-    if created:
-        await message.reply('New direction has been added.')
-        return
-
-    await message.reply('Direction has been updated.')
+        if created:
+            await message.reply('New direction has been added.')
+        else:
+            direction.travel_date = travel_date
+            direction.price = price
+            await session.commit()
+            await message.reply('Direction has been updated.')
 
 
 @router.message(Command(commands=['unsubscribe']))
@@ -118,8 +127,15 @@ async def cmd_unsubscribe(message: types.Message):
         await message.reply('Invalid airport code! Should be 3 letters.')
 
     async with ASession() as session:
-        dal = DataAccessLayer(Direction, session)
-        deleted = await dal.delete(chat_id=message.chat.id, src=src.upper(), dst=dst.upper())
+        dal_chat = DataAccessLayer(Chat, session)
+        chat = await dal_chat.get_by(tg_id=message.chat.id)
+
+        if chat is None:
+            await message.reply('Bot was not started yet!')
+            return
+
+        dal_dir = DataAccessLayer(Direction, session)
+        deleted = await dal_dir.delete(chat_id=chat.id, src=src.upper(), dst=dst.upper())
 
     if deleted:
         await message.reply(f'Direction has been removed.')

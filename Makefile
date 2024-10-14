@@ -21,5 +21,11 @@ migration:
 migrate:
 	alembic upgrade head
 
+set_hook:
+	curl --request POST --url https://api.telegram.org/bot${BOT_TOKEN}/setWebhook --header 'content-type: application/json' --data '{"url": ${CLOUD_FUNC_BOT_HOOK_URL}}'
+
+delete_hook:
+	curl --request POST --url 'https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook'
+
 # This is a phony target, meaning it doesn't represent a file
 .PHONY: build clean migration migrate

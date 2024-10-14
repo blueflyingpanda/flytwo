@@ -1,8 +1,9 @@
 import asyncio
+from datetime import date
 
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, UniqueConstraint, CheckConstraint
+from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
 from conf import DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME
 
@@ -18,28 +19,26 @@ class Base(DeclarativeBase, AsyncAttrs):
 class Chat(Base):
     __tablename__ = 'chats'
 
-    id: int = Column(Integer, primary_key=True)
-    chat_id: str = Column(String, nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
 
-    directions = relationship('Direction', back_populates='chat')
+    directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 
 
 class Direction(Base):
     __tablename__ = 'directions'
 
-    id: int = Column(Integer, primary_key=True)
-    src: str = Column(String, nullable=False)
-    dst: str = Column(String, nullable=False)
-    travel_date: Date = Column(Date, nullable=False)
-    price: int = Column(Integer, nullable=False)
-    chat_id: int = Column(Integer, ForeignKey('chats.id'), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    src: Mapped[str] = mapped_column(String(3))
+    dst: Mapped[str] = mapped_column(String(3))
+    travel_date: Mapped[date] = mapped_column()
+    price: Mapped[int] = mapped_column()
+    chat_id: Mapped[int] = mapped_column(ForeignKey('chats.id'))
 
-    chat = relationship('Chat', back_populates='directions')
+    chat: Mapped['Chat'] = relationship(back_populates='directions')
 
     __table_args__ = (
         UniqueConstraint('src', 'dst', 'chat_id', name='uix_src_dst_chat_id'),
-        CheckConstraint('length(src) = 3', name='chk_src_length'),
-        CheckConstraint('length(dst) = 3', name='chk_dst_length'),
     )
 
 

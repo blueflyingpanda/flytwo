@@ -41,7 +41,7 @@ async def cmd_help(message: types.Message):
 
 @router.message(Command(commands=['start']))
 async def cmd_start(message: types.Message):
-    with ASession() as session:
+    async with ASession() as session:
         dal = DataAccessLayer(Chat, session)
         _, created = await dal.get_or_create(chat_id=message.chat.id)
 

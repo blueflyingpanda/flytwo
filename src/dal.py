@@ -63,10 +63,14 @@ class DataAccessLayer:
 
 
     @staticmethod
-    async def get_directions_by_chats() -> dict[Chat, list[Direction]]:
+    async def get_directions_by_chats(chat_ids: list[int] | None = None) -> dict[Chat, list[Direction]]:
 
         async with ASession() as session:
             stmt = select(Chat).options(selectinload(Chat.directions))
+
+            if chat_ids is not None:
+                stmt = stmt.where(Chat.tg_id.in_(chat_ids))
+
             result = await session.execute(stmt)
             chats = result.scalars().all()
 

@@ -6,10 +6,10 @@ BUILD_ARC := yc_build.zip
 
 build:
 	mkdir -p $(BUILD_DIR)
-	cp -r $(SRC_DIR)/* $(BUILD_DIR)
+	rsync -a --exclude='__pycache__/' --exclude='flytwo.egg-info/' $(SRC_DIR)/ $(BUILD_DIR)
 	cp requirements.txt $(BUILD_DIR)
 	cp YandexInternalRootCA.crt $(BUILD_DIR)
-	zip -j $(BUILD_ARC) $(BUILD_DIR)/*
+	cd $(BUILD_DIR) && zip -r ../$(BUILD_ARC) *
 	rm -rf $(BUILD_DIR)
 
 clean:

@@ -147,7 +147,7 @@ async def cmd_unsubscribe(message: types.Message):
 async def cmd_trigger(message: types.Message):
     await message.reply('Manual launch started ...')
     async with aiohttp.ClientSession() as session:
-        async with session.post(CLOUD_FUNC_URL):
+        async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id}):
             await message.reply('Manual launch finished!')
 
 

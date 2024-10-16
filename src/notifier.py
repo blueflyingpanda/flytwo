@@ -1,4 +1,5 @@
 import asyncio
+import json
 from decimal import Decimal
 
 import aiohttp
@@ -48,10 +49,18 @@ class TgBotNotifier:
         await self.send_msg(f'{warn} {err_msg} {warn}')
 
 
-async def main(*args, **kwargs):
+async def main(event: dict | None =None, context=None):
+    callee_chat_ids = None
+
+    if event is not None:
+        body = json.loads(event['body'])
+        chat_id = body.get('chat_id')
+        if chat_id is not None:
+            callee_chat_ids = [chat_id]
+
     fc = FlyoneClient()
 
-    directions_by_chats = await DataAccessLayer.get_directions_by_chats()
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
     for chat, directions in directions_by_chats.items():
         for direction in directions:
@@ -90,4 +99,5 @@ async def main(*args, **kwargs):
 
 
 if __name__ == '__main__':
+    # TODO add caching
     asyncio.run(main())

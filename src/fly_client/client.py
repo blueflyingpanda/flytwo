@@ -26,6 +26,9 @@ class Flight:
     currency: str
     price: Decimal
 
+class FlyoneException(Exception):
+    """Base exception for all Flyone client exceptions."""
+
 
 class FlyoneClient:
 
@@ -61,14 +64,15 @@ class FlyoneClient:
                         await self.refresh_token()
                         return await self.request(path, data, retry=True)
                     else:
-                        raise Exception(f'{response.status}: {await response.text()}')
+                        raise FlyoneException(f'{response.status}: {await response.text()}')
 
                 response_data = (await response.json())
 
                 result = response_data['result']
 
                 if not result['isSuccess']:
-                    raise Exception(f'{result["code"]}: {result["msgText"]}')
+                    msgs = result['msgs']
+                    raise FlyoneException('\n'.join(( f'{msg["code"]}: {msg["msgText"]}' for msg in msgs)))
 
                 return response_data
 

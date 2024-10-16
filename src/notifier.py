@@ -1,10 +1,10 @@
 import asyncio
 from decimal import Decimal
-from os import environ
 
 import aiohttp
 
-from fly_client.client import FlyoneClient, Flight
+from dal import DataAccessLayer
+from fly_client.client import FlyoneClient, Flight, FlyoneException
 from conf import BOT_TOKEN
 
 
@@ -12,8 +12,8 @@ class TgBotNotifier:
 
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
 
-    def __init__(self, chat_ids: list[str], price_limit: Decimal | None):
-        self.chat_ids = chat_ids
+    def __init__(self, chat_id: int, price_limit: Decimal | None):
+        self.chat_id = chat_id
         self.price_limit = price_limit
 
     async def form_msg(self, flights: list[Flight]):
@@ -36,45 +36,57 @@ class TgBotNotifier:
 
     async def send_msg(self, msg: str):
 
-        payload = {'text': f'{msg}'}
+        payload = {'text': f'{msg}', 'chat_id': self.chat_id}
 
-        for chat_id in self.chat_ids:
-            payload['chat_id'] = chat_id
+        async with aiohttp.ClientSession() as session:
+            async with session.post(self.url, json=payload, ssl=False):
+                pass
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(self.url, json=payload, ssl=False):
-                    pass
+    async def send_err(self, msg: str):
+        warn = '⚠️'
+        err_msg = msg.partition(":")[2].strip()
+        await self.send_msg(f'{warn} {err_msg} {warn}')
 
 
 async def main(*args, **kwargs):
     fc = FlyoneClient()
 
-    travel_date = environ.get('TRAVEL_DATE')
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats()
 
-    result = await fc.get_flights(
-        dep=environ.get('ORIGIN'),
-        arr=environ.get('DESTINATION'),
-        dep_date=travel_date,
-        arr_date=travel_date,
-        currency='EUR'
-    )
+    for chat, directions in directions_by_chats.items():
+        for direction in directions:
+            travel_date = direction.travel_date.isoformat()
+            src = direction.src
+            dst = direction.dst
 
-    forward, backward = result
+            notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
 
-    chat_ids = environ.get('CHAT_IDS').split(',')
-    price_limit = Decimal(environ.get('PRICE_LIMIT'))
+            await notifier.send_msg(
+                f'From: {src}\n'
+                f'To: {dst}\n'
+                f'Price limit: {direction.price} EUR\n'
+                f'Travel date: {travel_date}'
+            )
 
-    notifier = TgBotNotifier(chat_ids=chat_ids, price_limit=price_limit)
+            try:
+                result = await fc.get_flights(
+                    dep=src,
+                    arr=dst,
+                    dep_date=travel_date,
+                    arr_date=travel_date,
+                    currency='EUR'
+                )
+            except FlyoneException as e:
+                await notifier.send_err(f'{e}')
+                continue
 
-    msg = await notifier.form_msg(forward)
+            forward, backward = result
 
-    sent = await notifier.send_msg(f'Forward flights:\n{msg}')
+            msg = await notifier.form_msg(forward)
+            await notifier.send_msg(f'Forward flights:\n{msg}')
 
-    if sent:
-        msg = await notifier.form_msg(backward)
-        await notifier.send_msg(f'Backward flights:\n{msg}')
-
-        await notifier.send_msg(f'Price limit: {price_limit} EUR\nTravel date: {travel_date}')
+            msg = await notifier.form_msg(backward)
+            await notifier.send_msg(f'Backward flights:\n{msg}')
 
 
 if __name__ == '__main__':

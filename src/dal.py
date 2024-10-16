@@ -3,6 +3,9 @@ from typing import Any
 from sqlalchemy import select, RowMapping, Row
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from db import Chat, ASession, Direction
 
 
 class DataAccessLayer:
@@ -57,3 +60,16 @@ class DataAccessLayer:
             return True  # Successfully deleted
 
         return False  # No record found to delete
+
+
+    @staticmethod
+    async def get_directions_by_chats() -> dict[Chat, list[Direction]]:
+
+        async with ASession() as session:
+            stmt = select(Chat).options(selectinload(Chat.directions))
+            result = await session.execute(stmt)
+            chats = result.scalars().all()
+
+            directions_by_chats = {chat: chat.directions for chat in chats}
+
+        return directions_by_chats

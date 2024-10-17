@@ -24,7 +24,7 @@ class TgBotNotifier:
 
         for flight in flights:
             day, month, year = flight.travel_date.split('.')
-            f_date = f'{day.zfill(2)}.{month}.{year}'
+            f_date = f'{day.zfill(2)}.{month.zfill(2)}.{year}'
 
             price = f'{flight.price}'
 

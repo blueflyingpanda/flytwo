@@ -49,11 +49,11 @@ class TgBotNotifier:
         await self.send_msg(f'{warn} {err_msg} {warn}')
 
 
-async def main(event: dict | None =None, context=None):
+async def main(event: dict | None = None, context=None):
     callee_chat_ids = None
 
-    if event is not None:
-        body = json.loads(event['body'])
+    if event is not None and (body := event.get('body')):
+        body = json.loads(body)
         chat_id = body.get('chat_id')
         if chat_id is not None:
             callee_chat_ids = [chat_id]

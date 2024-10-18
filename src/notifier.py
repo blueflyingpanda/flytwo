@@ -90,6 +90,7 @@ async def main(event: dict | None = None, context=None):
 
                 if forward_value is None or backward_value is None:
                     try:
+                        print(f'Fetching data from flyone: {src} -> {dst}')
                         forward, backward = await fc.get_flights(
                             dep=src,
                             arr=dst,
@@ -107,13 +108,17 @@ async def main(event: dict | None = None, context=None):
                     forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
                     backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
 
-            msg = await notifier.form_msg(forward)
-            await notifier.send_msg(f'Forward flights:\n{msg}')
+                msg = await notifier.form_msg(forward)
+                await notifier.send_msg(f'Forward flights:\n{msg}')
 
-            msg = await notifier.form_msg(backward)
-            await notifier.send_msg(f'Backward flights:\n{msg}')
+                msg = await notifier.form_msg(backward)
+                await notifier.send_msg(f'Backward flights:\n{msg}')
 
 
 if __name__ == '__main__':
-    # TODO add caching
+    # TODO add logging
+    # TODO add tests
+    # TODO force cache disabling
+    # TODO make separate archives for trigger and bot
+    # TODO improve ui
     asyncio.run(main())

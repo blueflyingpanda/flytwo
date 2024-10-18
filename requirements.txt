@@ -7,3 +7,5 @@ alembic
 python-dotenv
 redis
 pytest
+pydantic
+setuptools

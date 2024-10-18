@@ -1,30 +1,33 @@
-from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any
 
 import aiohttp
+from pydantic import TypeAdapter, BaseModel
 
 
-class Direction:
+class Direction(Enum):
     FORWARD = 1
     BACKWARD = 2
 
 
-@dataclass
-class Airport:
+class Airport(BaseModel):
     code: str = ''
     name: str = ''
     country: str = ''
 
 
-@dataclass
-class Flight:
+class Flight(BaseModel):
     from_airport: Airport
     to_airport: Airport
     travel_date: str
     currency: str
     price: Decimal
+
+
+FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])
+
 
 class FlyoneException(Exception):
     """Base exception for all Flyone client exceptions."""
@@ -79,12 +82,12 @@ class FlyoneClient:
     @property
     async def airport_by_code(self) -> dict[str, 'Airport']:
         if not self._airports_by_code:
-            result: dict[str, 'Airport'] = {}
+            result: dict[str, Airport] = {}
             response = await self.request('Routes/get-routes', {})
 
             for route in response['routes']:
                 code = route['depCode']
-                result[code] = Airport(code, route['depAirportName'], route['countryName'])
+                result[code] = Airport(code=code, name=route['depAirportName'], country=route['countryName'])
 
             self._airports_by_code = result
 

@@ -3,10 +3,12 @@ import json
 from decimal import Decimal
 
 import aiohttp
+from pydantic_core import to_jsonable_python
 
+from cache import redis_client
 from dal import DataAccessLayer
-from fly_client.client import FlyoneClient, Flight, FlyoneException
-from conf import BOT_TOKEN
+from fly_client.client import FlyoneClient, Flight, FlyoneException, FLIGHTS_TYPE_ADAPTER
+from conf import BOT_TOKEN, REDIS_TTL
 
 
 class TgBotNotifier:
@@ -62,34 +64,48 @@ async def main(event: dict | None = None, context=None):
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
-    for chat, directions in directions_by_chats.items():
-        for direction in directions:
-            travel_date = direction.travel_date.isoformat()
-            src = direction.src
-            dst = direction.dst
+    async with redis_client() as cache:
 
-            notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
+        for chat, directions in directions_by_chats.items():
+            for direction in directions:
+                travel_date = direction.travel_date.isoformat()
+                src = direction.src
+                dst = direction.dst
 
-            await notifier.send_msg(
-                f'From: {src}\n'
-                f'To: {dst}\n'
-                f'Price limit: {direction.price} EUR\n'
-                f'Travel date: {travel_date}'
-            )
+                notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
 
-            try:
-                result = await fc.get_flights(
-                    dep=src,
-                    arr=dst,
-                    dep_date=travel_date,
-                    arr_date=travel_date,
-                    currency='EUR'
+                await notifier.send_msg(
+                    f'From: {src}\n'
+                    f'To: {dst}\n'
+                    f'Price limit: {direction.price} EUR\n'
+                    f'Travel date: {travel_date}'
                 )
-            except FlyoneException as e:
-                await notifier.send_err(f'{e}')
-                continue
 
-            forward, backward = result
+                forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
+                backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
+
+
+                forward_value = await cache.get(forward_key)
+                backward_value = await cache.get(backward_key)
+
+                if forward_value is None or backward_value is None:
+                    try:
+                        forward, backward = await fc.get_flights(
+                            dep=src,
+                            arr=dst,
+                            dep_date=travel_date,
+                            arr_date=travel_date,
+                            currency='EUR'
+                        )
+                    except FlyoneException as e:
+                        await notifier.send_err(f'{e}')
+                        continue
+
+                    await cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL)
+                    await cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
+                else:
+                    forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
+                    backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
 
             msg = await notifier.form_msg(forward)
             await notifier.send_msg(f'Forward flights:\n{msg}')

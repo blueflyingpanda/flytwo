@@ -13,5 +13,9 @@ DB_NAME = environ.get('DB_NAME')
 REDIS_PASS = environ.get('REDIS_PASS')
 REDIS_HOST = environ.get('REDIS_HOST')
 REDIS_PORT = environ.get('REDIS_PORT')
+REDIS_TTL = environ.get('REDIS_TTL')
+
+if REDIS_TTL is not None:
+    REDIS_TTL = int(REDIS_TTL)
 
 YC_CERT = environ.get('YC_CERT')

@@ -132,9 +132,9 @@ async def main(event: dict | None = None, context=None):
 
 
 if __name__ == '__main__':
-    # TODO schedule off chat setting
-    # TODO optimise and profile
+    # TODO optimise msg sending
     # TODO make separate archives for trigger and bot
+    # TODO refactor DAL
     # TODO add bot buttons
     # TODO add api
     # TODO add tests

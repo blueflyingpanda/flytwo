@@ -1,7 +1,7 @@
 import asyncio
 from datetime import date
 
-from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger
+from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
@@ -21,6 +21,7 @@ class Chat(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
+    schedule: Mapped[bool] = mapped_column(Boolean, default=False)
 
     directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 

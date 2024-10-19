@@ -70,6 +70,8 @@ class DataAccessLayer:
 
             if chat_ids is not None:
                 stmt = stmt.where(Chat.tg_id.in_(chat_ids))
+            else:
+                stmt = stmt.where(Chat.schedule == True)
 
             result = await session.execute(stmt)
             chats = result.scalars().all()

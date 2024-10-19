@@ -33,8 +33,10 @@ async def cmd_help(message: types.Message):
         "/remove <src> <dst> - Remove a travel direction.\n"
         "Example: /remove RMO EVN\n"
         "Note: src and dst should be 3-letter airport codes.\n\n"
-        "/go - Manually trigger the bot. It triggers by schedule at 10:00, 16:00, 22:00 GMT+3\n"
-        "Usage: Just type /go\n"
+        "/go - Manually launch the bot.\n"
+        "Usage: Just type /go\n\n"
+        "/schedule - Toggles scheduling setting for the chat. If ON, triggers the bot by schedule at 10:00, 16:00, 22:00 GMT+3\n"
+        "Usage: Just type /schedule"
     )
     await message.reply(help_text)
 
@@ -149,6 +151,23 @@ async def cmd_go(message: types.Message):
     async with aiohttp.ClientSession() as session:
         async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id}):
             await message.reply('Manual launch finished!')
+
+
+@router.message(Command(commands=['schedule']))
+async def cmd_schedule(message: types.Message):
+
+    async with ASession() as session:
+        dal = DataAccessLayer(Chat, session)
+        chat = await dal.get_by(tg_id=message.chat.id)
+
+        if chat is None:
+            await message.reply('Bot was not started yet!')
+            return
+
+        chat.schedule = not chat.schedule
+        await session.commit()
+
+    await message.reply(f'Schedule: {"ON" if chat.schedule else "OFF"}')
 
 
 dp.include_router(router)

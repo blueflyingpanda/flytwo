@@ -28,7 +28,7 @@ async def cmd_help(message: types.Message):
         "/stop - Stop the bot.\n"
         "Usage: Just type /stop\n\n"
         "/subscribe <src> <dst> <travel_date> <price> - Subscribe to a travel direction.\n"
-        "Example: /subscribe RMO EVN 2024-10-15 300\n"
+        "Example: /subscribe RMO EVN 15.10.2024 300\n"
         "Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n"
         "/unsubscribe <src> <dst> - Unsubscribe from a travel direction.\n"
         "Example: /unsubscribe RMO EVN\n"

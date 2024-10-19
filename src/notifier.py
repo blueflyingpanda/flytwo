@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import aiohttp
 from pydantic_core import to_jsonable_python
+from redis.asyncio import Redis
 
 from cache import redis_client
 from dal import DataAccessLayer
@@ -17,9 +18,10 @@ class TgBotNotifier:
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
     max_msg_len = 4096
 
-    def __init__(self, chat_id: int, price_limit: Decimal | None):
+    def __init__(self, chat_id: int, price_limit: Decimal | None, msg_header: str = ''):
         self.chat_id = chat_id
         self.price_limit = price_limit
+        self.msg_header = msg_header
 
     async def form_msg(self, flights: list[Flight]):
 
@@ -41,16 +43,60 @@ class TgBotNotifier:
 
     async def send_msg(self, msg: str):
 
-        payload = {'text': f'{msg}', 'chat_id': self.chat_id}
+        payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
 
         async with aiohttp.ClientSession() as session:
             async with session.post(self.url, json=payload, ssl=False):
                 pass
 
-    async def send_err(self, msg: str, header: str = ''):
+    async def send_err(self, msg: str):
         warn = '⚠️'
         err_msg = msg.partition(":")[2].strip()
-        await self.send_msg(f'{header}\n\n{warn} {err_msg} {warn}'.strip())
+        await self.send_msg(f'{warn} {err_msg} {warn}'.strip())
+
+
+async def fetch_flights(
+    src: str, dst: str, travel_date: str, msg_header: str, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
+) -> tuple[list[Flight], list[Flight], TgBotNotifier] | None:
+
+    forward_key = backward_key = None
+    forward_value = backward_value = None
+
+    if REDIS_TTL is not None:
+        forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
+        backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
+
+        forward_value, backward_value = await cache.mget(forward_key, backward_key)
+
+    if forward_value is None or backward_value is None:
+        try:
+            custom_logger.info(f'Fetching data from flyone: {src} -> {dst}')
+
+            forward, backward = await fc.get_flights(
+                dep=src,
+                arr=dst,
+                dep_date=travel_date,
+                arr_date=travel_date,
+                currency='EUR'
+            )
+        except FlyoneException as e:
+            err_msg = f'{e}'
+            custom_logger.error(err_msg)
+            await notifier.send_err(err_msg)
+            return
+
+        if REDIS_TTL is not None:
+            await asyncio.gather(
+                cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL),
+                cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
+            )
+    else:
+        custom_logger.info(f'Cache found: {src} -> {dst}')
+
+        forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
+        backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
+
+    return forward, backward, notifier
 
 
 async def main(event: dict | None = None, context=None):
@@ -66,7 +112,7 @@ async def main(event: dict | None = None, context=None):
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
-    to_send = []
+    to_fetch = []
 
     async with redis_client() as cache:
 
@@ -77,8 +123,6 @@ async def main(event: dict | None = None, context=None):
                 src = direction.src
                 dst = direction.dst
 
-                notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
-
                 msg_header = (
                     f'From: {src} 🛫\n'
                     f'To: {dst} 🛬\n'
@@ -86,51 +130,32 @@ async def main(event: dict | None = None, context=None):
                     f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} 🧳'
                 )
 
-                forward_value = backward_value = None
-
-                if REDIS_TTL is not None:
-                    forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
-                    backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
-
-                    forward_value = await cache.get(forward_key)
-                    backward_value = await cache.get(backward_key)
-
-                if forward_value is None or backward_value is None:
-                    try:
-                        custom_logger.info(f'Fetching data from flyone: {src} -> {dst}')
-
-                        forward, backward = await fc.get_flights(
-                            dep=src,
-                            arr=dst,
-                            dep_date=travel_date,
-                            arr_date=travel_date,
-                            currency='EUR'
-                        )
-                    except FlyoneException as e:
-                        err_msg = f'{e}'
-                        custom_logger.error(err_msg)
-                        await notifier.send_err(err_msg, msg_header)
-                        continue
-
-                    if REDIS_TTL is not None:
-                        await cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL)
-                        await cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
-                else:
-                    custom_logger.info(f'Cache found: {src} -> {dst}')
-
-                    forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
-                    backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
-
-                forward_msg = await notifier.form_msg(forward)
-                backward_msg = await notifier.form_msg(backward)
-
-                msg = (
-                    f'{msg_header}\n\n'
-                    f'Forward flights ✈️:\n{forward_msg}\n\n'
-                    f'Backward flights 🛩️:\n{backward_msg}'
+                notifier = TgBotNotifier(
+                    chat_id=chat.tg_id, price_limit=Decimal(direction.price), msg_header=msg_header
                 )
 
-                to_send.append(notifier.send_msg(msg))
+                to_fetch.append(fetch_flights(src, dst, travel_date, msg_header, notifier, cache, fc))
+
+    to_send = []
+
+    for result in await asyncio.gather(*to_fetch):
+
+        if result is None:
+            continue
+
+        forward, backward, notifier = result
+
+        forward_msg, backward_msg = await asyncio.gather(
+            notifier.form_msg(forward),
+            notifier.form_msg(backward)
+        )
+
+        msg = (
+            f'Forward flights ✈️:\n{forward_msg}\n\n'
+            f'Backward flights 🛩️:\n{backward_msg}'
+        )
+
+        to_send.append(notifier.send_msg(msg))
 
     await asyncio.gather(*to_send)
 

@@ -150,7 +150,7 @@ class FlyoneClient:
         arr_airport: Airport = airport_by_code[arr]
 
         for direction in result['flightSchedule']:
-            is_back = direction['direction'] == Direction.BACKWARD
+            is_back = direction['direction'] == Direction.BACKWARD.value
             days = []
             year = direction['year']
 

@@ -27,14 +27,14 @@ async def cmd_help(message: types.Message):
         "Usage: Just type /start\n\n"
         "/stop - Stop the bot.\n"
         "Usage: Just type /stop\n\n"
-        "/subscribe <src> <dst> <travel_date> <price> - Subscribe to a travel direction.\n"
-        "Example: /subscribe RMO EVN 15.10.2024 300\n"
+        "/add <src> <dst> <travel_date> <price> - Add a travel direction.\n"
+        "Example: /add RMO EVN 15.10.2024 300\n"
         "Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n"
-        "/unsubscribe <src> <dst> - Unsubscribe from a travel direction.\n"
-        "Example: /unsubscribe RMO EVN\n"
+        "/remove <src> <dst> - Remove a travel direction.\n"
+        "Example: /remove RMO EVN\n"
         "Note: src and dst should be 3-letter airport codes.\n\n"
-        "/trigger - Manually trigger the bot. It triggers by schedule at 10:00, 16:00, 22:00 GMT+3\n"
-        "Usage: Just type /trigger\n"
+        "/go - Manually trigger the bot. It triggers by schedule at 10:00, 16:00, 22:00 GMT+3\n"
+        "Usage: Just type /go\n"
     )
     await message.reply(help_text)
 
@@ -63,12 +63,12 @@ async def cmd_stop(message: types.Message):
         await message.reply(f'Bot is already stopped.')
 
 
-@router.message(Command(commands=['subscribe']))
-async def cmd_subscribe(message: types.Message):
+@router.message(Command(commands=['add']))
+async def cmd_add(message: types.Message):
     command_parts = message.text.split()
 
     if len(command_parts) != 5:
-        await message.reply('Usage: /subscribe <src> <dst> <travel_date> <price>')
+        await message.reply('Usage: /add <src> <dst> <travel_date> <price>')
         return
 
     _, src, dst, travel_date_str, price_str = command_parts
@@ -113,12 +113,12 @@ async def cmd_subscribe(message: types.Message):
             await message.reply('Direction has been updated.')
 
 
-@router.message(Command(commands=['unsubscribe']))
-async def cmd_unsubscribe(message: types.Message):
+@router.message(Command(commands=['remove']))
+async def cmd_remove(message: types.Message):
     command_parts = message.text.split()
 
     if len(command_parts) != 3:
-        await message.reply('Usage: /unsubscribe <src> <dst>')
+        await message.reply('Usage: /remove <src> <dst>')
         return
 
     _, src, dst = command_parts
@@ -143,8 +143,8 @@ async def cmd_unsubscribe(message: types.Message):
         await message.reply(f'Direction was not found.')
 
 
-@router.message(Command(commands=['trigger']))
-async def cmd_trigger(message: types.Message):
+@router.message(Command(commands=['go']))
+async def cmd_go(message: types.Message):
     await message.reply('Manual launch started ...')
     async with aiohttp.ClientSession() as session:
         async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id}):

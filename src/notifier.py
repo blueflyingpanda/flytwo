@@ -132,8 +132,10 @@ async def main(event: dict | None = None, context=None):
 
 
 if __name__ == '__main__':
+    # TODO schedule off chat setting
     # TODO optimise and profile
-    # TODO improve ux
     # TODO make separate archives for trigger and bot
+    # TODO add bot buttons
+    # TODO add api
     # TODO add tests
     asyncio.run(main())

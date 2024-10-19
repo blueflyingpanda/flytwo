@@ -71,16 +71,17 @@ async def main(event: dict | None = None, context=None):
         for chat, directions in directions_by_chats.items():
             for direction in directions:
                 travel_date = direction.travel_date.isoformat()
+
                 src = direction.src
                 dst = direction.dst
 
                 notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
 
                 msg_header = (
-                    f'From: {src}\n'
-                    f'To: {dst}\n'
-                    f'Price limit: {direction.price} EUR\n'
-                    f'Travel date: {travel_date}'
+                    f'From: {src} 🛫\n'
+                    f'To: {dst} 🛬\n'
+                    f'Price limit: {direction.price} 💶\n'
+                    f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} 🧳'
                 )
 
                 forward_value = backward_value = None
@@ -123,8 +124,8 @@ async def main(event: dict | None = None, context=None):
 
                 msg = (
                     f'{msg_header}\n\n'
-                    f'Forward flights:\n{forward_msg}\n\n'
-                    f'Backward flights:\n{backward_msg}'
+                    f'Forward flights ✈️:\n{forward_msg}\n\n'
+                    f'Backward flights 🛩️:\n{backward_msg}'
                 )
 
                 await notifier.send_msg(msg)

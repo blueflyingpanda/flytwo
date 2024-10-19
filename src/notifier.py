@@ -9,11 +9,13 @@ from cache import redis_client
 from dal import DataAccessLayer
 from fly_client.client import FlyoneClient, Flight, FlyoneException, FLIGHTS_TYPE_ADAPTER
 from conf import BOT_TOKEN, REDIS_TTL
+from logs import custom_logger
 
 
 class TgBotNotifier:
 
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
+    max_msg_len = 4096
 
     def __init__(self, chat_id: int, price_limit: Decimal | None):
         self.chat_id = chat_id
@@ -45,10 +47,10 @@ class TgBotNotifier:
             async with session.post(self.url, json=payload, ssl=False):
                 pass
 
-    async def send_err(self, msg: str):
+    async def send_err(self, msg: str, header: str = ''):
         warn = '⚠️'
         err_msg = msg.partition(":")[2].strip()
-        await self.send_msg(f'{warn} {err_msg} {warn}')
+        await self.send_msg(f'{header}\n\n{warn} {err_msg} {warn}'.strip())
 
 
 async def main(event: dict | None = None, context=None):
@@ -74,23 +76,26 @@ async def main(event: dict | None = None, context=None):
 
                 notifier = TgBotNotifier(chat_id=chat.tg_id, price_limit=Decimal(direction.price))
 
-                await notifier.send_msg(
+                msg_header = (
                     f'From: {src}\n'
                     f'To: {dst}\n'
                     f'Price limit: {direction.price} EUR\n'
                     f'Travel date: {travel_date}'
                 )
 
-                forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
-                backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
+                forward_value = backward_value = None
 
+                if REDIS_TTL is not None:
+                    forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
+                    backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
 
-                forward_value = await cache.get(forward_key)
-                backward_value = await cache.get(backward_key)
+                    forward_value = await cache.get(forward_key)
+                    backward_value = await cache.get(backward_key)
 
                 if forward_value is None or backward_value is None:
                     try:
-                        print(f'Fetching data from flyone: {src} -> {dst}')
+                        custom_logger.info(f'Fetching data from flyone: {src} -> {dst}')
+
                         forward, backward = await fc.get_flights(
                             dep=src,
                             arr=dst,
@@ -99,26 +104,35 @@ async def main(event: dict | None = None, context=None):
                             currency='EUR'
                         )
                     except FlyoneException as e:
-                        await notifier.send_err(f'{e}')
+                        err_msg = f'{e}'
+                        custom_logger.error(err_msg)
+                        await notifier.send_err(err_msg, msg_header)
                         continue
 
-                    await cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL)
-                    await cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
+                    if REDIS_TTL is not None:
+                        await cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL)
+                        await cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
                 else:
+                    custom_logger.info(f'Cache found: {src} -> {dst}')
+
                     forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
                     backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
 
-                msg = await notifier.form_msg(forward)
-                await notifier.send_msg(f'Forward flights:\n{msg}')
+                forward_msg = await notifier.form_msg(forward)
+                backward_msg = await notifier.form_msg(backward)
 
-                msg = await notifier.form_msg(backward)
-                await notifier.send_msg(f'Backward flights:\n{msg}')
+                msg = (
+                    f'{msg_header}\n\n'
+                    f'Forward flights:\n{forward_msg}\n\n'
+                    f'Backward flights:\n{backward_msg}'
+                )
+
+                await notifier.send_msg(msg)
 
 
 if __name__ == '__main__':
-    # TODO add logging
-    # TODO add tests
-    # TODO force cache disabling
-    # TODO make separate archives for trigger and bot
+    # TODO optimise and profile
     # TODO improve ui
+    # TODO make separate archives for trigger and bot
+    # TODO add tests
     asyncio.run(main())

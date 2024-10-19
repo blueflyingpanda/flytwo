@@ -9,3 +9,4 @@ redis
 pytest
 pydantic
 setuptools
+python-json-logger

@@ -66,6 +66,8 @@ async def main(event: dict | None = None, context=None):
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
+    to_send = []
+
     async with redis_client() as cache:
 
         for chat, directions in directions_by_chats.items():
@@ -128,11 +130,12 @@ async def main(event: dict | None = None, context=None):
                     f'Backward flights 🛩️:\n{backward_msg}'
                 )
 
-                await notifier.send_msg(msg)
+                to_send.append(notifier.send_msg(msg))
+
+    await asyncio.gather(*to_send)
 
 
 if __name__ == '__main__':
-    # TODO optimise msg sending
     # TODO make separate archives for trigger and bot
     # TODO refactor DAL
     # TODO add bot buttons

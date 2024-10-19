@@ -133,7 +133,7 @@ async def main(event: dict | None = None, context=None):
 
 if __name__ == '__main__':
     # TODO optimise and profile
-    # TODO improve ui
+    # TODO improve ux
     # TODO make separate archives for trigger and bot
     # TODO add tests
     asyncio.run(main())

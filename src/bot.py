@@ -74,9 +74,9 @@ async def cmd_subscribe(message: types.Message):
     _, src, dst, travel_date_str, price_str = command_parts
 
     try:
-        travel_date = datetime.fromisoformat(travel_date_str).date()
+        travel_date = datetime.strptime(travel_date_str, "%d.%m.%Y").date()
     except ValueError:
-        await message.reply('Invalid travel date format. Please use YYYY-MM-DD.')
+        await message.reply('Invalid travel date format. Please use DD.MM.YYYY')
         return
 
     try:

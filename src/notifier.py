@@ -121,6 +121,7 @@ async def main(event: dict | None = None, context=None):
             callee_chat_ids = [chat_id]
 
     fc = FlyoneClient()
+    await fc.refresh_token() # fixes connection timeout to https://bookings.flyone.eu/FareView
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
@@ -173,6 +174,8 @@ async def main(event: dict | None = None, context=None):
 
 
 if __name__ == '__main__':
+    # TODO add list directions command
+    # TODO add list codes command
     # TODO make separate archives for trigger and bot
     # TODO refactor DAL
     # TODO add bot buttons

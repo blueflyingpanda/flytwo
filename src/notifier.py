@@ -1,5 +1,6 @@
 import asyncio
 import json
+from collections import defaultdict
 from decimal import Decimal
 
 import aiohttp
@@ -23,6 +24,9 @@ class TgBotNotifier:
         self.price_limit = price_limit
         self.msg_header = msg_header
 
+    def __hash__(self):
+        return hash(self.chat_id)
+
     async def form_msg(self, flights: list[Flight]):
 
         msgs = []
@@ -40,19 +44,20 @@ class TgBotNotifier:
 
         return '\n'.join(msgs) or 'not found 🥲'
 
-
-    async def send_msg(self, msg: str):
-
-        payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
-
+    async def send_msgs(self, msgs: list[str]):
         async with aiohttp.ClientSession() as session:
-            async with session.post(self.url, json=payload, ssl=False):
-                pass
+            to_send = []
+
+            for msg in msgs:
+                payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
+                to_send.append(session.post(self.url, json=payload, ssl=False))
+
+            await asyncio.gather(*to_send)
 
     async def send_err(self, msg: str):
         warn = '⚠️'
         err_msg = msg.partition(":")[2].strip()
-        await self.send_msg(f'{warn} {err_msg} {warn}'.strip())
+        await self.send_msgs([f'{warn} {err_msg} {warn}'.strip()])
 
 
 async def fetch_flights(
@@ -136,7 +141,7 @@ async def main(event: dict | None = None, context=None):
 
                 to_fetch.append(fetch_flights(src, dst, travel_date, msg_header, notifier, cache, fc))
 
-    to_send = []
+    msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
 
     for result in await asyncio.gather(*to_fetch):
 
@@ -155,9 +160,9 @@ async def main(event: dict | None = None, context=None):
             f'Backward flights 🛩️:\n{backward_msg}'
         )
 
-        to_send.append(notifier.send_msg(msg))
+        msgs_by_notifier[notifier].append(msg)
 
-    await asyncio.gather(*to_send)
+    await asyncio.gather(*[notifier.send_msgs(msgs) for notifier, msgs in msgs_by_notifier.items()])
 
 
 if __name__ == '__main__':

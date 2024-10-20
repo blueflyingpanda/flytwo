@@ -10,3 +10,4 @@ pytest
 pydantic
 setuptools
 python-json-logger
+pycountry

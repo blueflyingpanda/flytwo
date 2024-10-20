@@ -11,6 +11,8 @@ from aiogram.filters import Command
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
 from db import ASession, Chat, Direction
+from fly_client.client import FlyoneClient
+from notifier import TgBotNotifier, form_direction_info
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,21 +24,25 @@ router = Router()
 @router.message(Command(commands=['help']))
 async def cmd_help(message: types.Message):
     help_text = (
-        "Here are the available commands:\n\n"
-        "/start - Start the bot.\n"
-        "Usage: Just type /start\n\n"
-        "/stop - Stop the bot.\n"
-        "Usage: Just type /stop\n\n"
-        "/add <src> <dst> <travel_date> <price> - Add a travel direction.\n"
-        "Example: /add RMO EVN 15.10.2024 300\n"
-        "Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n"
-        "/remove <src> <dst> - Remove a travel direction.\n"
-        "Example: /remove RMO EVN\n"
-        "Note: src and dst should be 3-letter airport codes.\n\n"
-        "/go - Manually launch the bot.\n"
-        "Usage: Just type /go\n\n"
-        "/schedule - Toggles scheduling setting for the chat. If ON, triggers the bot by schedule at 10:00, 16:00, 22:00 GMT+3\n"
-        "Usage: Just type /schedule"
+        'Here are the available commands:\n\n'
+        '/start - Start the bot.\n'
+        'Usage: Just type /start\n\n'
+        '/stop - Stop the bot.\n'
+        'Usage: Just type /stop\n\n'
+        '/add <src> <dst> <travel_date> <price> - Add a travel direction.\n'
+        'Example: /add RMO EVN 15.10.2024 300\n'
+        'Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n'
+        '/remove <src> <dst> - Remove a travel direction.\n'
+        'Example: /remove RMO EVN\n'
+        'Note: src and dst should be 3-letter airport codes.\n\n'
+        '/go - Manually launch the bot.\n'
+        'Usage: Just type /go\n\n'
+        '/schedule - Toggles scheduling setting for the chat. If ON, triggers the bot by schedule at 10:00, 16:00, 22:00 GMT+3\n'
+        'Usage: Just type /schedule\n\n'
+        '/airports - lists all available airports by their codes.\n'
+        'Usage: Just type /airports\n\n'
+        '/directions - lists all directions related to the chat.\n'
+        'Usage: Just type /flights\n\n'
     )
     await message.reply(help_text)
 
@@ -168,6 +174,45 @@ async def cmd_schedule(message: types.Message):
         await session.commit()
 
     await message.reply(f'Schedule: {"ON" if chat.schedule else "OFF"}')
+
+
+@router.message(Command(commands=['directions']))
+async def cmd_directions(message: types.Message):
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats([message.chat.id])
+
+    if not directions_by_chats:
+        await message.reply('Bot was not started yet!')
+        return
+
+    chat, directions = next(iter(directions_by_chats.items()))
+
+    if not directions:
+        await message.reply('No directions found.')
+
+    fc = FlyoneClient()
+    airport_by_code = await fc.airport_by_code
+
+    msgs = []
+
+    for direction in directions:
+        msg = await form_direction_info(direction, airport_by_code)
+        msgs.append(msg)
+
+    notifier = TgBotNotifier(chat_id=message.chat.id)
+    await notifier.send_msgs(msgs)
+
+
+@router.message(Command(commands=['airports']))
+async def cmd_airports(message: types.Message):
+    fc = FlyoneClient()
+
+    airport_by_code = await fc.airport_by_code
+    msgs = [
+        f'{code} <{airport.name}> |{airport.country}|'
+        for code in sorted(iter(airport_by_code.keys())) if (airport := airport_by_code[code])
+    ]
+    notifier = TgBotNotifier(chat_id=message.chat.id)
+    await notifier.send_msgs(['\n'.join(msgs)])
 
 
 dp.include_router(router)

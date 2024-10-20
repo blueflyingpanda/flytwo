@@ -5,9 +5,11 @@ from collections import defaultdict
 from decimal import Decimal
 
 import aiohttp
+from pycountry import countries
 from pydantic_core import to_jsonable_python
 from redis.asyncio import Redis
 
+import db
 from cache import redis_client
 from conf import BOT_TOKEN, REDIS_TTL
 from dal import DataAccessLayer
@@ -20,7 +22,7 @@ class TgBotNotifier:
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
     max_msg_len = 4096
 
-    def __init__(self, chat_id: int, price_limit: Decimal | None, msg_header: str = ''):
+    def __init__(self, chat_id: int, price_limit: Decimal | None = None, msg_header: str = ''):
         self.chat_id = chat_id
         self.price_limit = price_limit
         self.msg_header = msg_header
@@ -33,6 +35,16 @@ class TgBotNotifier:
         msgs = []
         flights = [flight for flight in flights if self.price_limit is None or flight.price <= self.price_limit]
 
+        min_price = max_price = None
+        prices = [flight.price for flight in flights]
+
+        if prices:
+            min_price = min(prices)
+            max_price = max(prices)
+
+            if min_price == max_price:
+                min_price = max_price = None
+
         for flight in flights:
             day, month, year = flight.travel_date.split('.')
             f_date = f'{day.zfill(2)}.{month.zfill(2)}.{year}'
@@ -41,23 +53,28 @@ class TgBotNotifier:
 
             msg = f'{f_date}: {flight.from_airport.code} -> {flight.to_airport.code} - {price.rjust(4)} {flight.currency}'
 
+            if flight.price == min_price:
+                msg = f'{msg} ✅'
+            elif flight.price == max_price:
+                msg = f'{msg} ❌'
+
             msgs.append(msg)
 
         return '\n'.join(msgs) or 'not found 🥲'
 
     async def send_msgs(self, msgs: list[str]):
 
-        async def slow_send():
+        async def slow_send(data: dict):
             """fixes connection timeout to https://api.telegram.org"""
             await asyncio.sleep(random.uniform(0.1, 1.0))
-            await session.post(self.url, json=payload, ssl=False)
+            await session.post(self.url, json=data, ssl=False)
 
         async with aiohttp.ClientSession() as session:
             to_send = []
 
             for msg in msgs:
                 payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
-                to_send.append(slow_send())
+                to_send.append(slow_send(payload))
 
             await asyncio.gather(*to_send)
 
@@ -68,8 +85,11 @@ class TgBotNotifier:
 
 
 async def fetch_flights(
-    src: str, dst: str, travel_date: str, msg_header: str, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
+    direction: db.Direction, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
 ) -> tuple[list[Flight], list[Flight], TgBotNotifier] | None:
+    travel_date = direction.travel_date.isoformat()
+    src = direction.src
+    dst = direction.dst
 
     forward_key = backward_key = None
     forward_value = backward_value = None
@@ -111,6 +131,34 @@ async def fetch_flights(
     return forward, backward, notifier
 
 
+async def form_direction_info(direction: db.Direction, airport_by_code: dict) -> str:
+    src = direction.src
+    dst = direction.dst
+
+    src_flag = dst_flag = ''
+
+    try:
+        src_country = countries.lookup(airport_by_code.get(src).country)
+    except LookupError:
+        src_country = None
+    try:
+        dst_country = countries.lookup(airport_by_code.get(dst).country)
+    except LookupError:
+        dst_country = None
+
+    if src_country is not None:
+        src_flag = src_country.flag  # noqa
+    if dst_country is not None:
+        dst_flag = dst_country.flag  # noqa
+
+    return (
+        f'From: {src} {src_flag}\n'
+        f'To: {dst} {dst_flag}\n'
+        f'Price limit: {direction.price} 💶\n'
+        f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} ✈️'
+    )
+
+
 async def main(event: dict | None = None, context=None):
     callee_chat_ids = None
 
@@ -121,7 +169,7 @@ async def main(event: dict | None = None, context=None):
             callee_chat_ids = [chat_id]
 
     fc = FlyoneClient()
-    await fc.refresh_token() # fixes connection timeout to https://bookings.flyone.eu/FareView
+    airport_by_code = await fc.airport_by_code
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
@@ -131,23 +179,14 @@ async def main(event: dict | None = None, context=None):
 
         for chat, directions in directions_by_chats.items():
             for direction in directions:
-                travel_date = direction.travel_date.isoformat()
 
-                src = direction.src
-                dst = direction.dst
-
-                msg_header = (
-                    f'From: {src} 🛫\n'
-                    f'To: {dst} 🛬\n'
-                    f'Price limit: {direction.price} 💶\n'
-                    f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} 🧳'
-                )
+                msg_header = await form_direction_info(direction, airport_by_code)
 
                 notifier = TgBotNotifier(
                     chat_id=chat.tg_id, price_limit=Decimal(direction.price), msg_header=msg_header
                 )
 
-                to_fetch.append(fetch_flights(src, dst, travel_date, msg_header, notifier, cache, fc))
+                to_fetch.append(fetch_flights(direction, notifier, cache, fc))
 
     msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
 
@@ -164,9 +203,9 @@ async def main(event: dict | None = None, context=None):
         )
 
         msg = (
-            f'Forward flights ✈️:\n{forward_msg}\n\n'
-            f'Backward flights 🛩️:\n{backward_msg}'
-        )
+            f'Forward flights 🛫:\n{forward_msg}\n\n'
+            f'Backward flights 🛬:\n{backward_msg}'
+        ).replace('EUR', '€')
 
         msgs_by_notifier[notifier].append(msg)
 
@@ -174,8 +213,6 @@ async def main(event: dict | None = None, context=None):
 
 
 if __name__ == '__main__':
-    # TODO add list directions command
-    # TODO add list codes command
     # TODO make separate archives for trigger and bot
     # TODO refactor DAL
     # TODO add bot buttons

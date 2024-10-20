@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 from collections import defaultdict
 from decimal import Decimal
 
@@ -8,9 +9,9 @@ from pydantic_core import to_jsonable_python
 from redis.asyncio import Redis
 
 from cache import redis_client
+from conf import BOT_TOKEN, REDIS_TTL
 from dal import DataAccessLayer
 from fly_client.client import FlyoneClient, Flight, FlyoneException, FLIGHTS_TYPE_ADAPTER
-from conf import BOT_TOKEN, REDIS_TTL
 from logs import custom_logger
 
 
@@ -45,12 +46,18 @@ class TgBotNotifier:
         return '\n'.join(msgs) or 'not found 🥲'
 
     async def send_msgs(self, msgs: list[str]):
+
+        async def slow_send():
+            """fixes connection timeout to https://api.telegram.org"""
+            await asyncio.sleep(random.uniform(0.1, 1.0))
+            await session.post(self.url, json=payload, ssl=False)
+
         async with aiohttp.ClientSession() as session:
             to_send = []
 
             for msg in msgs:
                 payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
-                to_send.append(session.post(self.url, json=payload, ssl=False))
+                to_send.append(slow_send())
 
             await asyncio.gather(*to_send)
 

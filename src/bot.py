@@ -10,7 +10,6 @@ from aiogram.filters import Command
 
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
-from db import ASession, Chat, Direction
 from fly_client.client import FlyoneClient
 from notifier import TgBotNotifier, form_direction_info
 
@@ -42,16 +41,14 @@ async def cmd_help(message: types.Message):
         '/airports - lists all available airports by their codes.\n'
         'Usage: Just type /airports\n\n'
         '/directions - lists all directions related to the chat.\n'
-        'Usage: Just type /flights\n\n'
+        'Usage: Just type /directions\n\n'
     )
     await message.reply(help_text)
 
 
 @router.message(Command(commands=['start']))
 async def cmd_start(message: types.Message):
-    async with ASession() as session:
-        dal = DataAccessLayer(Chat, session)
-        _, created = await dal.get_or_create(tg_id=message.chat.id)
+    _, created = await DataAccessLayer.create_chat(tg_id=message.chat.id)
 
     if created:
         await message.reply(f'Bot started! Use /help for more info.')
@@ -61,9 +58,7 @@ async def cmd_start(message: types.Message):
 
 @router.message(Command(commands=['stop']))
 async def cmd_stop(message: types.Message):
-    async with ASession() as session:
-        dal = DataAccessLayer(Chat, session)
-        deleted = await dal.delete(tg_id=message.chat.id)
+    deleted = await DataAccessLayer.remove_chat(tg_id=message.chat.id)
 
     if deleted:
         await message.reply(f'Bot stopped!')
@@ -98,27 +93,20 @@ async def cmd_add(message: types.Message):
     if any(filter(lambda elem: len(elem) != 3, (src, dst))):
         await message.reply('Invalid airport code! Should be 3 letters.')
 
-    async with ASession() as session:
-        dal_chat = DataAccessLayer(Chat, session)
-        chat = await dal_chat.get_by(tg_id=message.chat.id)
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
 
-        if chat is None:
-            await message.reply('Bot was not started yet!')
-            return
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
 
-        dal_dir = DataAccessLayer(Direction, session)
-        direction, created = await dal_dir.get_or_create(
-            chat_id=chat.id, src=src.upper(), dst=dst.upper(),
-            defaults={'travel_date': travel_date, 'price': price}
-        )
+    direction, created = await DataAccessLayer.create_direction(
+        chat_id=chat.id, src=src.upper(), dst=dst.upper(), travel_date=travel_date, price=price
+    )
 
-        if created:
-            await message.reply('New direction has been added.')
-        else:
-            direction.travel_date = travel_date
-            direction.price = price
-            await session.commit()
-            await message.reply('Direction has been updated.')
+    if created:
+        await message.reply('New direction has been added.')
+    else:
+        await message.reply('Direction has been updated.')
 
 
 @router.message(Command(commands=['remove']))
@@ -134,16 +122,13 @@ async def cmd_remove(message: types.Message):
     if any(filter(lambda elem: len(elem) != 3, (src, dst))):
         await message.reply('Invalid airport code! Should be 3 letters.')
 
-    async with ASession() as session:
-        dal_chat = DataAccessLayer(Chat, session)
-        chat = await dal_chat.get_by(tg_id=message.chat.id)
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
 
-        if chat is None:
-            await message.reply('Bot was not started yet!')
-            return
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
 
-        dal_dir = DataAccessLayer(Direction, session)
-        deleted = await dal_dir.delete(chat_id=chat.id, src=src.upper(), dst=dst.upper())
+    deleted = await DataAccessLayer.remove_direction(chat_id=chat.id, src=src.upper(), dst=dst.upper())
 
     if deleted:
         await message.reply(f'Direction has been removed.')
@@ -161,19 +146,13 @@ async def cmd_go(message: types.Message):
 
 @router.message(Command(commands=['schedule']))
 async def cmd_schedule(message: types.Message):
+    schedule = await DataAccessLayer.toggle_schedule(tg_id=message.chat.id)
 
-    async with ASession() as session:
-        dal = DataAccessLayer(Chat, session)
-        chat = await dal.get_by(tg_id=message.chat.id)
+    if schedule is None:
+        await message.reply('Bot was not started yet!')
+        return
 
-        if chat is None:
-            await message.reply('Bot was not started yet!')
-            return
-
-        chat.schedule = not chat.schedule
-        await session.commit()
-
-    await message.reply(f'Schedule: {"ON" if chat.schedule else "OFF"}')
+    await message.reply(f'Schedule: {"ON" if schedule else "OFF"}')
 
 
 @router.message(Command(commands=['directions']))

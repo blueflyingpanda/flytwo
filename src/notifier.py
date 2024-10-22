@@ -213,9 +213,4 @@ async def main(event: dict | None = None, context=None):
 
 
 if __name__ == '__main__':
-    # TODO make separate archives for trigger and bot
-    # TODO refactor DAL
-    # TODO add bot buttons
-    # TODO add api
-    # TODO add tests
     asyncio.run(main())

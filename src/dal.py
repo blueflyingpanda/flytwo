@@ -1,58 +1,51 @@
+from datetime import date
 from typing import Any
 
-from sqlalchemy import select, RowMapping, Row
+from sqlalchemy import select, RowMapping, Row, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from db import Chat, ASession, Direction
 
 
-class DataAccessLayer:
-    def __init__(self, model: Any, session: AsyncSession):
-        self.model = model
-        self.session = session
+class DBUtils:
 
-    async def get_by(self, **kwargs) -> RowMapping:
-        stmt = select(self.model).filter_by(**kwargs)
-        result = await self.session.execute(stmt)
-        instance = result.scalars().first()
-
-        return instance
-
-    async def get_or_create(
-            self, defaults: dict[str, Any] | None = None, **kwargs
+    @staticmethod
+    async def upsert(
+            model, defaults: dict[str, Any] | None = None, **kwargs
     ) -> tuple[Row | RowMapping, bool]:
 
-        model = self.model
-        session = self.session
+        async with ASession() as session:
 
-        stmt = select(model).filter_by(**kwargs)
-        result = await session.execute(stmt)
-        instance = result.scalars().first()
-
-        if instance:
-            return instance, False  # Object found
-
-        instance = model(**kwargs, **(defaults or {}))
-        session.add(instance)
-
-        try:
-            await session.commit()
-            return instance, True  # Object created
-        except IntegrityError:
-            await session.rollback()
-            # In case another process created the instance, try fetching it again
+            stmt = select(model).filter_by(**kwargs)
             result = await session.execute(stmt)
             instance = result.scalars().first()
-            return instance, False  # Object found after race condition
 
-    async def delete(self, **kwargs) -> bool:
-        session = self.session
+            if instance:
+                for key, value in defaults.items():
+                    setattr(instance, key, value)
+                await session.commit()
+                return instance, False  # Object found
 
-        stmt = select(self.model).filter_by(**kwargs)
-        result = await session.execute(stmt)
-        instance = result.scalars().first()
+            instance = model(**kwargs, **(defaults or {}))
+            session.add(instance)
+
+            try:
+                await session.commit()
+                return instance, True  # Object created
+            except IntegrityError:
+                await session.rollback()
+                # In case another process created the instance, try fetching it again
+                result = await session.execute(stmt)
+                instance = result.scalars().first()
+                return instance, False  # Object found after race condition
+
+    @staticmethod
+    async def delete(model, **kwargs) -> bool:
+        async with ASession() as session:
+            stmt = select(model).filter_by(**kwargs)
+            result = await session.execute(stmt)
+            instance = result.scalars().first()
 
         if instance:
             await session.delete(instance)
@@ -61,6 +54,53 @@ class DataAccessLayer:
 
         return False  # No record found to delete
 
+
+class DataAccessLayer:
+
+    @staticmethod
+    async def get_chat(tg_id: int) -> Chat | None:
+        async with ASession() as session:
+            stmt = select(Chat).filter_by(tg_id=tg_id)
+            result = await session.execute(stmt)
+            instance = result.scalars().first()
+
+        return instance
+
+    @staticmethod
+    async def create_chat(tg_id: int) -> [Chat, bool]:
+        return await DBUtils.upsert(Chat, tg_id=tg_id)
+
+    @staticmethod
+    async def remove_chat(tg_id: int) -> [Chat, bool]:
+        return await DBUtils.delete(Chat, tg_id=tg_id)
+
+    @staticmethod
+    async def create_direction(chat_id: int, src: str, dst: str, price: int, travel_date: date) -> [Direction, bool]:
+        return await DBUtils.upsert(
+            Direction,
+            chat_id=chat_id, src=src, dst=dst,
+            defaults={'travel_date': travel_date, 'price': price}
+        )
+
+    @staticmethod
+    async def remove_direction(chat_id: int, src: str, dst: str) -> [Direction, bool]:
+        return await DBUtils.delete(Direction, chat_id=chat_id, src=src, dst=dst)
+
+    @staticmethod
+    async def toggle_schedule(tg_id: int) -> bool | None:
+        async with ASession() as session:
+            stmt = (
+                update(Chat)
+                .filter_by(tg_id=tg_id)
+                .values(schedule=not Chat.schedule)
+                .returning(Chat.schedule)
+            )
+            result = await session.execute(stmt)
+            updated_schedule = result.scalar_one_or_none()
+
+            await session.commit()
+
+            return updated_schedule
 
     @staticmethod
     async def get_directions_by_chats(chat_ids: list[int] | None = None) -> dict[Chat, list[Direction]]:

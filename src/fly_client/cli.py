@@ -41,7 +41,7 @@ def display_flights(flights: list[Flight], price_limit: Decimal) -> None:
         else:
             color = Color.RESET
 
-        print(
+        click.echo(
             f'{color}{formatted_date}: {from_airport_str.ljust(44)} -> {to_airport_str.ljust(44)} '
             f'- {price.rjust(5)} {flight.currency}{Color.RESET}'
         )
@@ -64,7 +64,7 @@ def display_fares(response: dict[str, Any], airports_by_code: dict[str, Airport]
         arr_airport_str = f'{arr_airport.code} <{arr_airport.name}> |{arr_airport.country}|'
         price_str = f'{fare["price"]}'
 
-        print(
+        click.echo(
             f'#{str(n).zfill(3)} {travel_date} '
             f'{dep_airport_str.ljust(44)} -> {arr_airport_str.ljust(44)} '
             f'- {price_str.rjust(5)}'
@@ -87,9 +87,9 @@ async def run_flights(origin: str, destination: str, currency: str, travel_date:
         dep=origin, arr=destination, dep_date=travel_date, arr_date=travel_date, currency=currency
     )
 
-    print('Forward Flights:\n')
+    click.echo('Forward Flights:\n')
     display_flights(forward, price)
-    print('\nBackward Flights:\n')
+    click.echo('\nBackward Flights:\n')
     display_flights(backward, price)
 
 

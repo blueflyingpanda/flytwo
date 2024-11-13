@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select, RowMapping, Row, update
+from sqlalchemy import select, RowMapping, Row, update, case
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
@@ -92,7 +92,11 @@ class DataAccessLayer:
             stmt = (
                 update(Chat)
                 .filter_by(tg_id=tg_id)
-                .values(schedule=not Chat.schedule)
+                .values(schedule=case(
+                        (Chat.schedule == True, False),
+                        else_=True
+                    )
+                )
                 .returning(Chat.schedule)
             )
             result = await session.execute(stmt)

@@ -105,9 +105,9 @@ class FlyoneClient:
             self,
             *,
             dep: str, arr: str, dep_date: str, arr_date: str,
-            currency: str = '', before: int = 16, after: int = 16, passengers: int = 1
+            currency: str = '', before: int = 10, after: int = 10, passengers: int = 1
     ) -> tuple[list[Flight], list[Flight]]:
-        """before/after window must not exceed 32 days"""
+        """before/after window must not exceed 20 days"""
         payload = {
             'reservationType': 1,
             'searchCriteria': {
@@ -165,7 +165,8 @@ class FlyoneClient:
                             currency=currency,
                             price=Decimal(day["price"])
                         )
-                        for day in month['days'] if day['isFlightAvailable']]
+                        for day in month['days'] if day['isFlightAvailable'] and not day['isSoldOut']
+                    ]
                 )
 
             if is_back:

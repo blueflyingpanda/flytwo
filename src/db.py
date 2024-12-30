@@ -1,7 +1,7 @@
 import asyncio
 from datetime import date
 
-from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean
+from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
@@ -22,18 +22,24 @@ class Chat(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     schedule: Mapped[bool] = mapped_column(Boolean, default=False)
+    less: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text('true'))
 
     directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 
 
-class Direction(Base):
-    __tablename__ = 'directions'
+class FlightBase(Base):
+    __abstract__ = True
 
     id: Mapped[int] = mapped_column(primary_key=True)
     src: Mapped[str] = mapped_column(String(3))
     dst: Mapped[str] = mapped_column(String(3))
     travel_date: Mapped[date] = mapped_column()
     price: Mapped[int] = mapped_column()
+
+
+class Direction(FlightBase):
+    __tablename__ = 'directions'
+
     chat_id: Mapped[int] = mapped_column(ForeignKey('chats.id'))
 
     chat: Mapped['Chat'] = relationship(back_populates='directions')
@@ -41,6 +47,16 @@ class Direction(Base):
     __table_args__ = (
         UniqueConstraint('src', 'dst', 'chat_id', name='uix_src_dst_chat_id'),
     )
+
+
+class Flight(FlightBase):
+    __tablename__ = 'flights'
+    __table_args__ = (
+        UniqueConstraint('src', 'dst', 'travel_date', name='uix_src_dst_date'),
+    )
+
+    def __hash__(self) -> int:
+        return hash(f'{self.src}{self.dst}{self.travel_date.strftime("%-d.%-m.%Y")}')
 
 
 connection_string = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'

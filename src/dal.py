@@ -1,11 +1,14 @@
-from datetime import date
+from datetime import date, datetime, UTC
 from typing import Any
 
-from sqlalchemy import select, RowMapping, Row, update, case
+from sqlalchemy import select, RowMapping, Row, update, case, delete, and_, or_
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from db import Chat, ASession, Direction
+from db import Chat, ASession, Direction, Flight
+from fly_client.client import Flight as FetchedFlight
+from logs import custom_logger
 
 
 class DBUtils:
@@ -87,24 +90,28 @@ class DataAccessLayer:
         return await DBUtils.delete(Direction, chat_id=chat_id, src=src, dst=dst)
 
     @staticmethod
-    async def toggle_schedule(tg_id: int) -> bool | None:
+    async def _toggle(tg_id: int, field_name: str) -> bool | None:
+        """field_name: bool that changes its value to the opposite"""
         async with ASession() as session:
+            field = getattr(Chat, field_name)
             stmt = (
                 update(Chat)
                 .filter_by(tg_id=tg_id)
-                .values(schedule=case(
-                        (Chat.schedule == True, False),
-                        else_=True
-                    )
-                )
-                .returning(Chat.schedule)
+                .values(**{field_name: case((field == True, False), else_=True)})
+                .returning(field)
             )
             result = await session.execute(stmt)
-            updated_schedule = result.scalar_one_or_none()
-
+            updated_value = result.scalar_one_or_none()
             await session.commit()
+            return updated_value
 
-            return updated_schedule
+    @staticmethod
+    async def toggle_schedule(tg_id: int) -> bool | None:
+        return await DataAccessLayer._toggle(tg_id, 'schedule')
+
+    @staticmethod
+    async def toggle_less(tg_id: int) -> bool | None:
+        return await DataAccessLayer._toggle(tg_id, 'less')
 
     @staticmethod
     async def get_directions_by_chats(chat_ids: list[int] | None = None) -> dict[Chat, list[Direction]]:
@@ -123,3 +130,67 @@ class DataAccessLayer:
             directions_by_chats = {chat: chat.directions for chat in chats}
 
         return directions_by_chats
+
+    @staticmethod
+    async def cleanup_outdated_flights():
+        current_date = datetime.now(UTC).date()
+
+        async with ASession() as session:
+            stmt = delete(Flight).where(Flight.travel_date < current_date)
+            result = await session.execute(stmt)
+            await session.commit()
+
+            custom_logger.info(f'{result.rowcount} outdated flights deleted')
+
+    @staticmethod
+    async def get_flights(fetched_flights: list[FetchedFlight]) -> list[Flight]:
+
+        async with ASession() as session:
+            filters = [
+                and_(
+                    Flight.src == flight.from_airport.code,
+                    Flight.dst == flight.to_airport.code,
+                    Flight.travel_date == datetime.strptime(flight.travel_date, '%d.%m.%Y').date()
+                )
+                for flight in fetched_flights
+            ]
+
+            stmt = select(Flight).where(or_(*filters))
+            result = await session.execute(stmt)
+
+            flights = result.scalars().all()
+
+        return flights
+
+    @staticmethod
+    async def add_flights(fetched_flights: list[FetchedFlight]):
+        async with ASession() as session:
+            new_flight_data = [
+                {
+                    'src': fetched_flight.from_airport.code,
+                    'dst': fetched_flight.to_airport.code,
+                    'travel_date': datetime.strptime(fetched_flight.travel_date, '%d.%m.%Y').date(),
+                    'price': 0  # in order to detect flights in FlightsChangeDetector
+                }
+                for fetched_flight in fetched_flights
+            ]
+
+            if new_flight_data:
+                stmt = insert(Flight).values(new_flight_data)
+                # specific for postgres
+                stmt = stmt.on_conflict_do_nothing(index_elements=['src', 'dst', 'travel_date'])
+
+                result = await session.execute(stmt)
+                await session.commit()
+
+                custom_logger.info(f'{result.rowcount} new flights inserted')
+
+    @staticmethod
+    async def update_flights(updated_price_by_flight: list[dict[str, int]]):
+        async with ASession() as session:
+            await session.execute(
+                update(Flight), updated_price_by_flight
+            )
+            await session.commit()
+
+            custom_logger.info(f'{len(updated_price_by_flight)} flights updated')

@@ -11,7 +11,7 @@ from aiogram.filters import Command
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
 from fly_client.client import FlyoneClient
-from notifier import TgBotNotifier, form_direction_info
+from notifier import TgBotNotifier
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,6 +38,8 @@ async def cmd_help(message: types.Message):
         'Usage: Just type /go\n\n'
         '/schedule - Toggles scheduling setting for the chat. If ON, triggers the bot by schedule at 10:00, 16:00, 22:00 GMT+3\n'
         'Usage: Just type /schedule\n\n'
+        '/less - Toggles silence mode for the chat. If ON, messages will be sent only on changes.\n'
+        'Usage: Just type /less\n\n'
         '/airports - lists all available airports by their codes.\n'
         'Usage: Just type /airports\n\n'
         '/directions - lists all directions related to the chat.\n'
@@ -155,6 +157,17 @@ async def cmd_schedule(message: types.Message):
     await message.reply(f'Schedule: {"ON" if schedule else "OFF"}')
 
 
+@router.message(Command(commands=['less']))
+async def cmd_less(message: types.Message):
+    schedule = await DataAccessLayer.toggle_less(tg_id=message.chat.id)
+
+    if schedule is None:
+        await message.reply('Bot was not started yet!')
+        return
+
+    await message.reply(f'Silent mode: {"ON" if schedule else "OFF"}')
+
+
 @router.message(Command(commands=['directions']))
 async def cmd_directions(message: types.Message):
     directions_by_chats = await DataAccessLayer.get_directions_by_chats([message.chat.id])
@@ -174,7 +187,7 @@ async def cmd_directions(message: types.Message):
     msgs = []
 
     for direction in directions:
-        msg = await form_direction_info(direction, airport_by_code)
+        msg = await TgBotNotifier.form_direction_info(direction, airport_by_code)
         msgs.append(msg)
 
     notifier = TgBotNotifier(chat_id=message.chat.id)

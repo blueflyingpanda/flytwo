@@ -6,6 +6,8 @@ from typing import Any
 import aiohttp
 from pydantic import TypeAdapter, BaseModel
 
+import db
+
 
 class Direction(Enum):
     FORWARD = 1
@@ -24,6 +26,16 @@ class Flight(BaseModel):
     travel_date: str
     currency: str
     price: Decimal
+
+    def __hash__(self) -> int:
+        return hash(f'{self.from_airport.code}{self.to_airport.code}{self.travel_date}')
+
+    def __eq__(self, other):
+        if isinstance(other, db.Flight):
+            # to get right associated stored in db flight in FlightsChangeDetector
+            return True
+
+        return super().__eq__(other)
 
 
 FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])
@@ -96,7 +108,7 @@ class FlyoneClient:
     async def get_fare_stats(self, *, dep: str, travel_date: str = '', currency: str = '') -> dict[str, Any]:
         payload = {
             'origin': dep,
-            'travelDate': travel_date or datetime.now().strftime('%Y-%m-%d'),
+            'travelDate': travel_date or datetime.now().strftime('%-d.%-m.%Y'),
             'currencyCode': currency or self.default_currency,
         }
         return await self.request('search/get-route-fare', payload)

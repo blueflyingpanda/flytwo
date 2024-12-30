@@ -1,20 +1,13 @@
 import asyncio
-import json
 import random
-from collections import defaultdict
 from decimal import Decimal
 
 import aiohttp
 from pycountry import countries
-from pydantic_core import to_jsonable_python
-from redis.asyncio import Redis
 
 import db
-from cache import redis_client
-from conf import BOT_TOKEN, REDIS_TTL
-from dal import DataAccessLayer
-from fly_client.client import FlyoneClient, Flight, FlyoneException, FLIGHTS_TYPE_ADAPTER
-from logs import custom_logger
+from conf import BOT_TOKEN
+from fly_client.client import Flight
 
 
 class TgBotNotifier:
@@ -27,7 +20,7 @@ class TgBotNotifier:
         self.price_limit = price_limit
         self.msg_header = msg_header
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.chat_id)
 
     async def form_msg(self, flights: list[Flight]):
@@ -83,134 +76,30 @@ class TgBotNotifier:
         err_msg = msg.partition(":")[2].strip()
         await self.send_msgs([f'{warn} {err_msg} {warn}'.strip()])
 
+    @staticmethod
+    async def form_direction_info(direction: db.Direction, airport_by_code: dict) -> str:
+        src = direction.src
+        dst = direction.dst
 
-async def fetch_flights(
-    direction: db.Direction, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
-) -> tuple[list[Flight], list[Flight], TgBotNotifier] | None:
-    travel_date = direction.travel_date.isoformat()
-    src = direction.src
-    dst = direction.dst
+        src_flag = dst_flag = ''
 
-    forward_key = backward_key = None
-    forward_value = backward_value = None
-
-    if REDIS_TTL is not None:
-        forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
-        backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
-
-        forward_value, backward_value = await cache.mget(forward_key, backward_key)
-
-    if forward_value is None or backward_value is None:
         try:
-            custom_logger.info(f'Fetching data from flyone: {src} -> {dst}')
+            src_country = countries.lookup(airport_by_code.get(src).country)
+        except LookupError:
+            src_country = None
+        try:
+            dst_country = countries.lookup(airport_by_code.get(dst).country)
+        except LookupError:
+            dst_country = None
 
-            forward, backward = await fc.get_flights(
-                dep=src,
-                arr=dst,
-                dep_date=travel_date,
-                arr_date=travel_date,
-                currency='EUR'
-            )
-        except FlyoneException as e:
-            err_msg = f'{e}'
-            custom_logger.error(err_msg)
-            await notifier.send_err(err_msg)
-            return
+        if src_country is not None:
+            src_flag = src_country.flag  # noqa
+        if dst_country is not None:
+            dst_flag = dst_country.flag  # noqa
 
-        if REDIS_TTL is not None:
-            await asyncio.gather(
-                cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL),
-                cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
-            )
-    else:
-        custom_logger.info(f'Cache found: {src} -> {dst}')
-
-        forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
-        backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)
-
-    return forward, backward, notifier
-
-
-async def form_direction_info(direction: db.Direction, airport_by_code: dict) -> str:
-    src = direction.src
-    dst = direction.dst
-
-    src_flag = dst_flag = ''
-
-    try:
-        src_country = countries.lookup(airport_by_code.get(src).country)
-    except LookupError:
-        src_country = None
-    try:
-        dst_country = countries.lookup(airport_by_code.get(dst).country)
-    except LookupError:
-        dst_country = None
-
-    if src_country is not None:
-        src_flag = src_country.flag  # noqa
-    if dst_country is not None:
-        dst_flag = dst_country.flag  # noqa
-
-    return (
-        f'From: {src} {src_flag}\n'
-        f'To: {dst} {dst_flag}\n'
-        f'Price limit: {direction.price} 💶\n'
-        f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} ✈️'
-    )
-
-
-async def main(event: dict | None = None, context=None):
-    callee_chat_ids = None
-
-    if event is not None and (body := event.get('body')):
-        body = json.loads(body)
-        chat_id = body.get('chat_id')
-        if chat_id is not None:
-            callee_chat_ids = [chat_id]
-
-    fc = FlyoneClient()
-    airport_by_code = await fc.airport_by_code
-
-    directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
-
-    to_fetch = []
-
-    async with redis_client() as cache:
-
-        for chat, directions in directions_by_chats.items():
-            for direction in directions:
-
-                msg_header = await form_direction_info(direction, airport_by_code)
-
-                notifier = TgBotNotifier(
-                    chat_id=chat.tg_id, price_limit=Decimal(direction.price), msg_header=msg_header
-                )
-
-                to_fetch.append(fetch_flights(direction, notifier, cache, fc))
-
-    msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
-
-    for result in await asyncio.gather(*to_fetch):
-
-        if result is None:
-            continue
-
-        forward, backward, notifier = result
-
-        forward_msg, backward_msg = await asyncio.gather(
-            notifier.form_msg(forward),
-            notifier.form_msg(backward)
+        return (
+            f'From: {src} {src_flag}\n'
+            f'To: {dst} {dst_flag}\n'
+            f'Price limit: {direction.price} 💶\n'
+            f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} ✈️'
         )
-
-        msg = (
-            f'Forward flights 🛫:\n{forward_msg}\n\n'
-            f'Backward flights 🛬:\n{backward_msg}'
-        ).replace(' EUR', '€')
-
-        msgs_by_notifier[notifier].append(msg)
-
-    await asyncio.gather(*[notifier.send_msgs(msgs) for notifier, msgs in msgs_by_notifier.items()])
-
-
-if __name__ == '__main__':
-    asyncio.run(main())

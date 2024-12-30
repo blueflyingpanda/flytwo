@@ -18,6 +18,8 @@ class DBUtils:
             model, defaults: dict[str, Any] | None = None, **kwargs
     ) -> tuple[Row | RowMapping, bool]:
 
+        defaults = defaults or {}
+
         async with ASession() as session:
 
             stmt = select(model).filter_by(**kwargs)
@@ -30,7 +32,7 @@ class DBUtils:
                 await session.commit()
                 return instance, False  # Object found
 
-            instance = model(**kwargs, **(defaults or {}))
+            instance = model(**kwargs, **defaults)
             session.add(instance)
 
             try:

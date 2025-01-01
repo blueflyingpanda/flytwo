@@ -66,7 +66,11 @@ async def main(event: dict | None = None, context=None):
 
         forwards, backwards, notifier = result
 
-        if display_all or any(flight in changed_flights for flight in chain(forwards, backwards)):
+        flights = chain(forwards, backwards)
+
+        flights = (flight for flight in flights if notifier.price_limit is None or flight.price <= notifier.price_limit)
+
+        if display_all or any(flight in changed_flights for flight in flights):
 
             forward_msg, backward_msg = await asyncio.gather(
                 notifier.form_msg(forwards),

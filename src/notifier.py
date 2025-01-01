@@ -23,10 +23,10 @@ class TgBotNotifier:
     def __hash__(self) -> int:
         return hash(self.chat_id)
 
-    async def form_msg(self, flights: list[Flight]):
+    @staticmethod
+    async def form_msg(flights: list[Flight]):
 
         msgs = []
-        flights = [flight for flight in flights if self.price_limit is None or flight.price <= self.price_limit]
 
         min_price = max_price = None
         prices = [flight.price for flight in flights]

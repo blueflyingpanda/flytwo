@@ -1,12 +1,12 @@
 from datetime import date, datetime, UTC
-from typing import Any
+from typing import Any, Type
 
 from sqlalchemy import select, RowMapping, Row, update, case, delete, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from db import Chat, ASession, Direction, Flight
+from db import Chat, ASession, Direction, Flight, FlightBase
 from fly_client.client import Flight as FetchedFlight
 from logs import custom_logger
 
@@ -134,15 +134,15 @@ class DataAccessLayer:
         return directions_by_chats
 
     @staticmethod
-    async def cleanup_outdated_flights():
+    async def cleanup_outdated(model: Type[FlightBase]):
         current_date = datetime.now(UTC).date()
 
         async with ASession() as session:
-            stmt = delete(Flight).where(Flight.travel_date < current_date)
+            stmt = delete(model).where(model.travel_date < current_date)
             result = await session.execute(stmt)
             await session.commit()
 
-            custom_logger.info(f'{result.rowcount} outdated flights deleted')
+            custom_logger.info(f'{result.rowcount} outdated {model.__tablename__} deleted')
 
     @staticmethod
     async def get_flights(fetched_flights: list[FetchedFlight]) -> list[Flight]:

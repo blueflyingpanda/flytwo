@@ -95,6 +95,14 @@ async def cmd_add(message: types.Message):
 
     if any(filter(lambda elem: len(elem) != 3, (src, dst))):
         await message.reply('Invalid airport code! Should be 3 letters.')
+        return
+
+    fc = FlyoneClient()
+    airport_by_code = await fc.airport_by_code
+
+    if src not in airport_by_code or dst not in airport_by_code:
+        await message.reply('Airport not supported. Find supported airports using /airports')
+        return
 
     chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
 

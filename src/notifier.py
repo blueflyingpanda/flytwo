@@ -84,12 +84,12 @@ class TgBotNotifier:
         src_flag = dst_flag = ''
 
         try:
-            src_country = countries.lookup(airport_by_code.get(src).country)
-        except LookupError:
+            src_country = countries.lookup(airport_by_code[src].country)
+        except (LookupError, KeyError):
             src_country = None
         try:
-            dst_country = countries.lookup(airport_by_code.get(dst).country)
-        except LookupError:
+            dst_country = countries.lookup(airport_by_code[dst].country)
+        except (LookupError, KeyError):
             dst_country = None
 
         if src_country is not None:

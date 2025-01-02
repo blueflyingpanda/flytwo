@@ -12,6 +12,7 @@ from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
 from fly_client.client import FlyoneClient
 from notifier import TgBotNotifier
+from parser import UrlParser
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,10 +29,10 @@ async def cmd_help(message: types.Message):
         'Usage: Just type /start\n\n'
         '/stop - Stop the bot.\n'
         'Usage: Just type /stop\n\n'
-        '/add <src> <dst> <travel_date> <price> - Add a travel direction.\n'
+        '/add <src> <dst> <travel_date> <price> OR /add <link> <price> - Add a travel direction.\n'
         'Example: /add RMO EVN 15.10.2024 300\n'
         'Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n'
-        '/remove <src> <dst> - Remove a travel direction.\n'
+        '/remove <src> <dst> OR /remove <link> - Remove a travel direction.\n'
         'Example: /remove RMO EVN\n'
         'Note: src and dst should be 3-letter airport codes.\n\n'
         '/go - Manually launch the bot.\n'
@@ -73,8 +74,12 @@ async def cmd_stop(message: types.Message):
 async def cmd_add(message: types.Message):
     command_parts = message.text.split()
 
+    if len(command_parts) == 3:
+        src, dst, travel_date_str = UrlParser.parse(command_parts[1])
+        command_parts = [command_parts[0], src, dst, travel_date_str, command_parts[2]]
+
     if len(command_parts) != 5:
-        await message.reply('Usage: /add <src> <dst> <travel_date> <price>')
+        await message.reply('Usage: /add <src> <dst> <travel_date> <price> OR /add <link> <price>')
         return
 
     _, src, dst, travel_date_str, price_str = command_parts
@@ -123,6 +128,10 @@ async def cmd_add(message: types.Message):
 @router.message(Command(commands=['remove']))
 async def cmd_remove(message: types.Message):
     command_parts = message.text.split()
+
+    if len(command_parts) == 2:
+        src, dst, _ = UrlParser.parse(command_parts[1])
+        command_parts = [command_parts[0], src, dst]
 
     if len(command_parts) != 3:
         await message.reply('Usage: /remove <src> <dst>')

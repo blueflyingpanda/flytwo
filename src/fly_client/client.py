@@ -6,8 +6,6 @@ from typing import Any
 import aiohttp
 from pydantic import TypeAdapter, BaseModel
 
-import db
-
 
 class Direction(Enum):
     FORWARD = 1
@@ -30,7 +28,9 @@ class Flight(BaseModel):
     def __hash__(self) -> int:
         return hash(f'{self.from_airport.code}{self.to_airport.code}{self.travel_date}')
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        import db  # import is placed here deliberately to be able to use the client without db
+
         if isinstance(other, db.Flight):
             # to get right associated stored in db flight in FlightsChangeDetector
             return True

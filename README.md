@@ -1,8 +1,71 @@
-# flytwo
+# Flytwo
 Flyone client to get the cheapest flights
 
 # Usage
 
-pip install -e .
-flytwo flights --origin RMO --destination EVN --currency EUR --travel_date 2024-12-01
+python3.11 or higher is required
 
+`pip install -e .`
+
+`flytwo flights --origin RMO --destination EVN --currency EUR --travel_date 2024-12-01`
+
+# For devs
+
+### Install dependencies
+`pip install -r requirements.txt`
+
+### Configure environment (preferably use .env file)
+
+```
+BOT_TOKEN=<your bot token (obtained from @BotFather)>
+
+DB_HOST=localhost
+DB_NAME=flytwo
+DB_PORT=6432
+DB_USER=flytwo
+DB_PASS=<your password goes here>
+```
+
+In this configuration redis cache will not work as well as /go command. But should be fine for most of the tasks.
+
+### Project structure
+
+```
+.
+├── Makefile <main commands to build project, set hooks, create db migrations>
+├── migrations <alembic migrations, represent changes in database> 
+├── src
+│   ├── bot.py <project's frontend>
+│   ├── ... <every other file relates to project backend parts and has descriptive name>
+│   ├── fly_client <standalone cli app and library that handles connections to flyone>
+│   │   ├── __init__.py
+│   │   ├── cli.py
+│   │   └── client.py
+│   ├── task_<name>.py <peridict tasks that run on background and are triggered by schedule start with task_ prefix>
+├── tests <autotests using pytest framework>
+
+```
+
+### Quick start
+
+Working directory `~/flytwo/src`
+
+Run bot (frontend) `python bot.py`
+
+Run notification task (backend) `python task_notify.py`
+
+### Guidelines
+
+The code should comply with [PEP8](https://peps.python.org/pep-0008/)
+
+Every new feature or bugfix should be covered with autotests to ensure it is working properly.
+
+Submit PR's for code review when all current tests are PASSED.
+
+Use English language in comments and '' instead of "" in strings.
+
+Typehints, docstrings and even doctests are welcome.
+
+Don't write comments if they are useless.
+
+Try to avoid code duplication.

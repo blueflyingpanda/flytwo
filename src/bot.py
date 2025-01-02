@@ -84,6 +84,13 @@ async def cmd_add(message: types.Message):
 
     _, src, dst, travel_date_str, price_str = command_parts
 
+    src = src.upper()
+    dst = dst.upper()
+
+    if src == dst:
+        await message.reply('Source cannot be the same as destination.')
+        return
+
     try:
         travel_date = datetime.strptime(travel_date_str, "%d.%m.%Y").date()
     except ValueError:
@@ -116,7 +123,7 @@ async def cmd_add(message: types.Message):
         return
 
     direction, created = await DataAccessLayer.create_direction(
-        chat_id=chat.id, src=src.upper(), dst=dst.upper(), travel_date=travel_date, price=price
+        chat_id=chat.id, src=src, dst=dst, travel_date=travel_date, price=price
     )
 
     if created:
@@ -139,6 +146,13 @@ async def cmd_remove(message: types.Message):
 
     _, src, dst = command_parts
 
+    src = src.upper()
+    dst = dst.upper()
+
+    if src == dst:
+        await message.reply('Source cannot be the same as destination.')
+        return
+
     if any(filter(lambda elem: len(elem) != 3, (src, dst))):
         await message.reply('Invalid airport code! Should be 3 letters.')
 
@@ -148,7 +162,7 @@ async def cmd_remove(message: types.Message):
         await message.reply('Bot was not started yet!')
         return
 
-    deleted = await DataAccessLayer.remove_direction(chat_id=chat.id, src=src.upper(), dst=dst.upper())
+    deleted = await DataAccessLayer.remove_direction(chat_id=chat.id, src=src, dst=dst)
 
     if deleted:
         await message.reply(f'Direction has been removed.')

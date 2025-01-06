@@ -174,7 +174,7 @@ async def cmd_remove(message: types.Message):
 async def cmd_go(message: types.Message):
     await message.reply('Manual launch started ...')
     async with aiohttp.ClientSession() as session:
-        async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id}):
+        async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id, 'manual': True}):
             await message.reply('Manual launch finished!')
 
 

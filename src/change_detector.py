@@ -7,7 +7,8 @@ class FlightsChangeDetector:
 
     @staticmethod
     async def get_changed_flights(
-            fetched_flights: list[Flight]
+            fetched_flights: list[Flight],
+            manual: bool = False,
     ):
         flights: list[db.Flight] = await DataAccessLayer.get_flights(fetched_flights)
         stored_flights: dict[db.Flight, db.Flight] = {flight: flight for flight in flights}
@@ -26,7 +27,7 @@ class FlightsChangeDetector:
 
                     changed_flights.append(flight)
 
-        if updated_price_by_flight:
+        if updated_price_by_flight and not manual:
             await DataAccessLayer.update_flights(updated_price_by_flight)
 
         return changed_flights

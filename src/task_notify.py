@@ -15,10 +15,13 @@ from notifier import TgBotNotifier
 async def main(event: dict | None = None, context=None):
     callee_chat_ids = None
     display_all = False
+    manual = False
 
     if event is not None and (body := event.get('body')):
         body = json.loads(body)
         chat_id = body.get('chat_id')
+        manual = body.get('manual', False)
+
         if chat_id is not None:
             callee_chat_ids = [chat_id]
             chat = await DataAccessLayer.get_chat(tg_id=chat_id)
@@ -60,7 +63,7 @@ async def main(event: dict | None = None, context=None):
         fetched_flights.extend(forwards)
         fetched_flights.extend(backwards)
 
-    changed_flights: set[Flight] = set(await FlightsChangeDetector.get_changed_flights(fetched_flights))
+    changed_flights: set[Flight] = set(await FlightsChangeDetector.get_changed_flights(fetched_flights, manual))
 
     for result in results:
 

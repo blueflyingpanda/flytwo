@@ -83,7 +83,7 @@ async def main(event: dict | None = None, context=None):
             msg = (
                 f'Forward flights 🛫:\n{forward_msg}\n\n'
                 f'Backward flights 🛬:\n{backward_msg}'
-            ).replace(' EUR', '€')
+            ).replace('EUR', '€')
 
             msgs_by_notifier[notifier].append(msg)
 

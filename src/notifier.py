@@ -5,9 +5,12 @@ from decimal import Decimal
 import aiohttp
 from pycountry import countries
 
-import db
 from conf import BOT_TOKEN
 from fly_client.client import Flight
+from logs import custom_logger
+
+if False:
+    import db  # noqa
 
 
 class TgBotNotifier:
@@ -23,7 +26,7 @@ class TgBotNotifier:
     def __hash__(self) -> int:
         return hash(self.chat_id)
 
-    async def form_msg(self, flights: list[Flight]):
+    async def form_msg(self, flights: list[Flight]) -> str:
 
         msgs = []
         flights = [flight for flight in flights if self.price_limit is None or flight.price <= self.price_limit]
@@ -44,12 +47,26 @@ class TgBotNotifier:
 
             price = f'{flight.price}'
 
-            msg = f'{f_date}: {flight.from_airport.code} -> {flight.to_airport.code} - {price.rjust(4)} {flight.currency}'
+            msg = f'{f_date}: {price.rjust(3)}{flight.currency_symbol}'
 
             if flight.price == min_price:
                 msg = f'{msg} ✅'
             elif flight.price == max_price:
                 msg = f'{msg} ❌'
+            else:
+                msg = f'{msg}   '
+
+            prev_price = f'{flight.prev_price or ""}'
+
+            if prev_price:
+                diff = flight.price - flight.prev_price
+                if diff > 0:
+                    arrow = '⬆️'
+                else:
+                    arrow = '⬇️'
+                    diff = -diff
+
+                msg = f'{msg} {arrow}{str(diff).rjust(3)}{flight.currency_symbol} (was {prev_price.rjust(3)}{flight.currency_symbol})'
 
             msgs.append(msg)
 
@@ -60,13 +77,14 @@ class TgBotNotifier:
         async def slow_send(data: dict):
             """fixes connection timeout to https://api.telegram.org"""
             await asyncio.sleep(random.uniform(0.1, 1.0))
-            await session.post(self.url, json=data, ssl=False)
+            resp = await session.post(self.url, json=data, ssl=False)
+            custom_logger.info(await resp.text())
 
         async with aiohttp.ClientSession() as session:
             to_send = []
 
             for msg in msgs:
-                payload = {'text': f'{self.msg_header}\n\n{msg}', 'chat_id': self.chat_id}
+                payload = {'text': f'<pre>{self.msg_header}\n\n{msg}</pre>', 'chat_id': self.chat_id, 'parse_mode': 'HTML'}
                 to_send.append(slow_send(payload))
 
             await asyncio.gather(*to_send)
@@ -77,7 +95,7 @@ class TgBotNotifier:
         await self.send_msgs([f'{warn} {err_msg} {warn}'.strip()])
 
     @staticmethod
-    async def form_direction_info(direction: db.Direction, airport_by_code: dict) -> str:
+    async def form_direction_info(direction: 'db.Direction', airport_by_code: dict) -> str:
         src = direction.src
         dst = direction.dst
 

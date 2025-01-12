@@ -6,6 +6,8 @@ from typing import Any
 import aiohttp
 from pydantic import TypeAdapter, BaseModel
 
+from currency import CURRENCY_SYMBOLS
+
 
 class Direction(Enum):
     FORWARD = 1
@@ -24,6 +26,7 @@ class Flight(BaseModel):
     travel_date: str
     currency: str
     price: Decimal
+    prev_price: Decimal | None = None
 
     def __hash__(self) -> int:
         return hash(f'{self.from_airport.code}{self.to_airport.code}{self.travel_date}')
@@ -36,6 +39,10 @@ class Flight(BaseModel):
             return True
 
         return super().__eq__(other)
+
+    @property
+    def currency_symbol(self) -> str:
+        return CURRENCY_SYMBOLS.get(self.currency, self.currency)
 
 
 FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])

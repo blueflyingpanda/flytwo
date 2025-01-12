@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import db
 from dal import DataAccessLayer
 from fly_client.client import Flight
@@ -25,6 +27,7 @@ class FlightsChangeDetector:
                         'price': int(flight.price)
                     })
 
+                    flight.prev_price = Decimal(stored_flight.price)  # noqa
                     changed_flights.append(flight)
 
         if updated_price_by_flight and not manual:

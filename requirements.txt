@@ -7,6 +7,7 @@ alembic
 python-dotenv
 redis
 pytest
+pytest-asyncio
 pydantic
 setuptools
 python-json-logger

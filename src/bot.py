@@ -7,7 +7,7 @@ import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import InputFile, BufferedInputFile
+from aiogram.types import BufferedInputFile
 
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer

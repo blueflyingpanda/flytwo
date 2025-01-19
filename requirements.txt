@@ -13,3 +13,4 @@ setuptools
 python-json-logger
 pycountry
 aiosqlite
+matplotlib

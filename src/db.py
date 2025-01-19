@@ -1,7 +1,7 @@
 import asyncio
 from datetime import date
 
-from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean, text
+from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean, text, JSON
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
@@ -54,12 +54,17 @@ class Flight(FlightBase):
     __table_args__ = (
         UniqueConstraint('src', 'dst', 'travel_date', name='uix_src_dst_date'),
     )
+    history: Mapped[list[dict[str, int | str]]] = mapped_column(JSON, default=[], server_default='[]')
 
     def __hash__(self) -> int:
         return hash(f'{self.src}{self.dst}{self.travel_date.strftime("%-d.%-m.%Y")}')
 
 
-connection_string = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+connection_string = (
+    f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}' if DB_PORT
+    else 'sqlite+aiosqlite:///:memory:' # for pytest
+)
+
 
 async_engine = create_async_engine(
     connection_string,

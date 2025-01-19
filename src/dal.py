@@ -189,10 +189,27 @@ class DataAccessLayer:
 
     @staticmethod
     async def update_flights(updated_price_by_flight: list[dict[str, int]]):
+
         async with ASession() as session:
-            await session.execute(
-                update(Flight), updated_price_by_flight
+            flight_ids = [item['id'] for item in updated_price_by_flight]
+
+            result = await session.execute(
+                select(Flight).where(Flight.id.in_(flight_ids))
             )
+            flights = {flight.id: flight for flight in result.scalars().all()}
+
+            for flight_data in updated_price_by_flight:
+                flight_id = flight_data['id']
+                new_price = flight_data['price']
+
+                flight = flights.get(flight_id)
+
+                if flight and flight.price != 0:
+                    # so that orm detects changes in column
+                    flight.history = flight.history + [{'price': flight.price, 'dt': datetime.now().isoformat()}]
+
+                flight.price = new_price
+
             await session.commit()
 
             custom_logger.info(f'{len(updated_price_by_flight)} flights updated')

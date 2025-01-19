@@ -12,3 +12,4 @@ pydantic
 setuptools
 python-json-logger
 pycountry
+aiosqlite

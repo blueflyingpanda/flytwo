@@ -7,12 +7,14 @@ import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram import Router
 from aiogram.filters import Command
+from aiogram.types import InputFile, BufferedInputFile
 
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
 from fly_client.client import FlyoneClient
 from notifier import TgBotNotifier
 from parser import UrlParser
+from plotter import Plotter
 
 logging.basicConfig(level=logging.INFO)
 
@@ -46,6 +48,8 @@ async def cmd_help(message: types.Message):
         'Usage: Just type /airports\n\n'
         '/directions - lists all directions related to the chat.\n'
         'Usage: Just type /directions\n\n'
+        '/stats - draws the chart of price changes for certain direction.\n'
+        'Usage: /stats <src> <dst>\n\n'
     )
     await message.reply(help_text)
 
@@ -237,6 +241,32 @@ async def cmd_airports(message: types.Message):
     ]
     notifier = TgBotNotifier(chat_id=message.chat.id)
     await notifier.send_msgs(['\n'.join(msgs)])
+
+@router.message(Command(commands=['stats']))
+async def cmd_stats(message: types.Message):
+    command_parts = message.text.split()
+
+    if len(command_parts) != 3:
+        await message.reply('Usage: /stats <src> <dst>')
+        return
+
+    _, src, dst = command_parts
+
+    src = src.upper()
+    dst = dst.upper()
+
+    if src == dst:
+        await message.reply('Source cannot be the same as destination.')
+        return
+
+    price_history = await DataAccessLayer.get_direction_price_history(src, dst)
+
+    buffer = await Plotter.plot_price_history(src, dst, price_history)
+
+    chart_image = BufferedInputFile(buffer.read(), filename='price_chart.png')
+    buffer.close()
+
+    await message.answer_photo(photo=chart_image, caption=f'Price History for {src} → {dst}')
 
 
 dp.include_router(router)

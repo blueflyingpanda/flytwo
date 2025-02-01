@@ -9,7 +9,9 @@ class Plotter:
     async def plot_price_history(src: str, dst: str, price_history: dict) -> BytesIO:
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        colors = ['#E63946', '#F4A261', '#2A9D8F', '#264653', '#8AB17D', '#9A348E', '#E76F51']
+        # Seaborn Tab10 colors. Don't use seaborn to avoid pandas and seaborn extra dependencies
+        colors = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
+
         all_tracking_dates = set()
 
         # Collect all tracking dates to establish a common X-axis

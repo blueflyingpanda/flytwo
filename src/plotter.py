@@ -1,11 +1,11 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from io import BytesIO
 import plotly.graph_objects as go
+import cairosvg
 
 class Plotter:
-
     @staticmethod
-    async def plot_price_history(src: str, dst: str, price_history: dict[date, list[dict]]) -> BytesIO:
+    async def plot_price_history(src: str, dst: str, price_history: dict) -> BytesIO:
         fig = go.Figure()
         x_dates = []
 
@@ -36,8 +36,7 @@ class Plotter:
                     last_known_price = daily_prices[date]
                     y_prices.append(last_known_price)
                 elif last_known_price is not None:
-                    # Fill gap with last known price
-                    y_prices.append(last_known_price)
+                    y_prices.append(last_known_price)  # Fill gap with last known price
                 else:
                     y_prices.append(None)
 
@@ -51,7 +50,7 @@ class Plotter:
             ))
 
         fig.update_layout(
-            title=f'Price History for {src} → {dst}',
+            title=f'Price History for {src} -> {dst}',
             xaxis_title='Tracking Date',
             yaxis_title='Price',
             legend_title='Flight Dates',
@@ -60,9 +59,11 @@ class Plotter:
             plot_bgcolor='white'
         )
 
-        # Save to BytesIO buffer
-        buffer = BytesIO()
-        fig.write_image(buffer, format='png')
-        buffer.seek(0)
+        # No kaleido needed - gives code 137 out of memory upon yc installation
+        svg_data = fig.to_image(format='svg')
 
-        return buffer
+        png_buffer = BytesIO()
+        cairosvg.svg2png(bytestring=svg_data, write_to=png_buffer)
+        png_buffer.seek(0)
+
+        return png_buffer

@@ -15,4 +15,4 @@ python-json-logger
 pycountry
 aiosqlite
 plotly
-kaleido
+cairosvg

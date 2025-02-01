@@ -36,7 +36,11 @@ class Flight(BaseModel):
 
         if isinstance(other, db.Flight):
             # to get right associated stored in db flight in FlightsChangeDetector
-            return True
+            return (
+                    self.from_airport.code == other.src
+                    and self.to_airport.code == other.dst
+                    and self.travel_date == f'{other.travel_date: %-d.%-m.%Y}'
+            )
 
         return super().__eq__(other)
 

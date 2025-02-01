@@ -219,6 +219,10 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             flights = result.scalars().all()
 
-            price_history_by_date = {flight.travel_date: flight.history for flight in flights}
+            dt = datetime.now().isoformat()
 
+            # adding current price to history
+            price_history_by_date = {
+                flight.travel_date: flight.history + [{'dt': dt, 'price': flight.price}] for flight in flights
+            }
             return price_history_by_date

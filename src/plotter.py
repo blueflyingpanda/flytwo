@@ -1,16 +1,17 @@
 from datetime import date, datetime, timedelta
 from io import BytesIO
-import matplotlib.pyplot as plt
-
+import plotly.graph_objects as go
 
 class Plotter:
 
     @staticmethod
     async def plot_price_history(src: str, dst: str, price_history: dict[date, list[dict]]) -> BytesIO:
-        plt.figure(figsize=(12, 7))
+        fig = go.Figure()
         x_dates = []
 
-        # Create a complete sequence of dates between min and max
+        # Define distinct colors for different flight paths
+        colors = ['#E63946', '#F4A261', '#2A9D8F', '#264653', '#8AB17D', '#9A348E', '#E76F51']
+
         all_tracking_dates = set()
         for histories in price_history.values():
             for record in histories:
@@ -18,24 +19,16 @@ class Plotter:
                 all_tracking_dates.add(tracking_date)
 
         if all_tracking_dates:
-            min_date = min(all_tracking_dates)
-            max_date = max(all_tracking_dates)
-            x_dates = []
-            current_date = min_date
-            while current_date <= max_date:
-                x_dates.append(current_date)
-                current_date += timedelta(days=1)
+            min_date, max_date = min(all_tracking_dates), max(all_tracking_dates)
+            x_dates = [min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)]
 
-        for flight_date in sorted(price_history.keys()):
-            # Create a dictionary to store the latest price for each tracking date
+        for i, (flight_date, records) in enumerate(sorted(price_history.items())):
             daily_prices = {}
 
-            for record in price_history[flight_date]:
+            for record in records:
                 tracking_date = datetime.fromisoformat(record['dt']).date()
-                # Always update with the latest price for each day
                 daily_prices[tracking_date] = record['price']
 
-            # Create y-values array, filling gaps with the last known price
             y_prices = []
             last_known_price = None
             for date in x_dates:
@@ -46,29 +39,30 @@ class Plotter:
                     # Fill gap with last known price
                     y_prices.append(last_known_price)
                 else:
-                    # If no price is known yet, use NaN to create a gap in the plot
-                    y_prices.append(float('nan'))
+                    y_prices.append(None)
 
-            # Plot the line for this flight date
-            plt.plot(x_dates, y_prices, marker='o', markersize=4,
-                     label=f'{flight_date}', drawstyle='steps-post')
+            fig.add_trace(go.Scatter(
+                x=x_dates,
+                y=y_prices,
+                mode='lines+markers',
+                name=f'{flight_date}',
+                line=dict(color=colors[i % len(colors)], width=3, shape='spline'),
+                marker=dict(size=8, symbol='circle')
+            ))
 
-        plt.title(f'Price History for {src} → {dst}')
-        plt.xlabel('Tracking Date')
-        plt.ylabel('Price')
-        plt.xticks(rotation=45)
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.grid(True, linestyle='--', alpha=0.6)
+        fig.update_layout(
+            title=f'Price History for {src} → {dst}',
+            xaxis_title='Tracking Date',
+            yaxis_title='Price',
+            legend_title='Flight Dates',
+            xaxis=dict(showgrid=True, gridcolor='lightgrey', gridwidth=0.5),
+            yaxis=dict(showgrid=True, gridcolor='lightgrey', gridwidth=0.5),
+            plot_bgcolor='white'
+        )
 
-        # Adjust layout to prevent label cutoff
-        plt.tight_layout()
-
-        plt.ylim(bottom=0)
-
-        # Save the plot to BytesIO buffer
+        # Save to BytesIO buffer
         buffer = BytesIO()
-        plt.savefig(buffer, format='png', bbox_inches='tight')
+        fig.write_image(buffer, format='png')
         buffer.seek(0)
-        plt.close()
 
         return buffer

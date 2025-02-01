@@ -18,7 +18,8 @@ async def seed_flights(session):
         price=300,
         history=[
             {'price': 200, 'dt': datetime(2023, 10, 1).isoformat()},
-            {'price': 250, 'dt': datetime(2023, 10, 15).isoformat()}
+            {'price': 250, 'dt': datetime(2023, 10, 15).isoformat()},
+            {'price': 300, 'dt': datetime(2023, 10, 16).isoformat()},
         ]
     )
     flight2 = Flight(
@@ -27,7 +28,9 @@ async def seed_flights(session):
         dst='SEA',
         travel_date=datetime.today(),
         price=150,
-        history=[]
+        history=[
+            {'price': 150, 'dt': datetime(2023, 11, 15).isoformat()},
+        ]
     )
     flight3 = Flight(
         id=3,
@@ -36,7 +39,8 @@ async def seed_flights(session):
         travel_date=datetime.today(),
         price=500,
         history=[
-            {'price': 450, 'dt': datetime(2023, 9, 20).isoformat()}
+            {'price': 450, 'dt': datetime(2023, 9, 20).isoformat()},
+            {'price': 500, 'dt': datetime(2023, 9, 29).isoformat()},
         ]
     )
 
@@ -66,15 +70,17 @@ async def test_update_flights(session, seed_flights):
     assert flight2.price == 180
     assert flight3.price == 500
 
-    assert len(flight1.history) == 3
-    assert flight1.history[-1]['price'] == 300
+    assert len(flight1.history) == 4
+    assert flight1.history[-2]['price'] == 300
+    assert flight1.history[-1]['price'] == 350
     assert isinstance(datetime.fromisoformat(flight1.history[-1]['dt']), datetime)
 
-    assert len(flight2.history) == 1
-    assert flight2.history[-1]['price'] == 150
+    assert len(flight2.history) == 2
+    assert flight2.history[-2]['price'] == 150
+    assert flight2.history[-1]['price'] == 180
     assert isinstance(datetime.fromisoformat(flight2.history[-1]['dt']), datetime)
 
     # remains unchanged
-    assert len(flight3.history) == 1
-    assert flight3.history[0]['price'] == 450
-    assert flight3.history[0]['dt'] == datetime(2023, 9, 20).isoformat()
+    assert len(flight3.history) == 2
+    assert flight3.history[-1]['price'] == 500
+    assert flight3.history[-1]['dt'] == datetime(2023, 9, 29).isoformat()

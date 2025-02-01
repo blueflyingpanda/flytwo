@@ -204,10 +204,8 @@ class DataAccessLayer:
 
                 flight = flights.get(flight_id)
 
-                if flight and flight.price != 0:
-                    # so that orm detects changes in column
-                    flight.history = flight.history + [{'price': flight.price, 'dt': datetime.now().isoformat()}]
-
+                # so that orm detects changes in column
+                flight.history = flight.history + [{'price': new_price, 'dt': datetime.now().isoformat()}]
                 flight.price = new_price
 
             await session.commit()
@@ -221,10 +219,6 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             flights = result.scalars().all()
 
-            dt = datetime.now().isoformat()
-
-            price_history_by_date = {
-                flight.travel_date: flight.history + [{'dt': dt, 'price': flight.price}] for flight in flights
-            }
+            price_history_by_date = {flight.travel_date: flight.history for flight in flights}
 
             return price_history_by_date

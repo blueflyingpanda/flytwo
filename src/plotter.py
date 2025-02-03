@@ -8,7 +8,9 @@ class Plotter:
     async def plot_price_history(src: str, dst: str, price_history: dict) -> BytesIO:
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # Seaborn Tab10 colors. Don't use seaborn to avoid pandas and seaborn extra dependencies
+        offset = .3  # otherwise graph lines might overlap
+
+        # Seaborn Tab10 colors. Avoiding seaborn for minimal dependencies
         colors = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
 
         all_tracking_dates = set()
@@ -38,9 +40,9 @@ class Plotter:
             for date in x_dates:
                 if date in daily_prices:
                     last_known_price = daily_prices[date]
-                    y_prices.append(last_known_price)
+                    y_prices.append(last_known_price + (i * offset))  # Small offset to prevent overlap
                 elif last_known_price is not None:
-                    y_prices.append(last_known_price)  # Fill gaps with the last known price
+                    y_prices.append(last_known_price + (i * offset))  # Maintain offset for gaps
                 else:
                     y_prices.append(None)
 

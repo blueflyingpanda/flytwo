@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import make_interp_spline
 
 class Plotter:
     @staticmethod
@@ -45,16 +44,13 @@ class Plotter:
                 else:
                     y_prices.append(None)
 
-            # Convert data for interpolation (filter out None values)
+            # Convert data for plotting (filter out None values)
             valid_indices = [j for j, y in enumerate(y_prices) if y is not None]
             x_valid = np.array([x_ticks[j] for j in valid_indices])
             y_valid = np.array([y_prices[j] for j in valid_indices])
 
-            if len(x_valid) > 3:  # Ensure enough points for smoothing
-                x_smooth = np.linspace(x_valid.min(), x_valid.max(), 100)
-                spline = make_interp_spline(x_valid, y_valid, k=2)  # Quadratic smoothness (slight curve)
-                y_smooth = spline(x_smooth)
-                ax.plot(x_smooth, y_smooth, color=colors[i % len(colors)], linewidth=2, label=f"{flight_date}")
+            if len(x_valid) > 1:  # Ensure enough points for plotting
+                ax.plot(x_valid, y_valid, color=colors[i % len(colors)], linewidth=2, label=f"{flight_date}")
 
             # Add markers at actual data points
             ax.scatter(x_valid, y_valid, color=colors[i % len(colors)], s=50, marker="o", edgecolors='black')

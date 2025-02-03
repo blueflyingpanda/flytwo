@@ -39,7 +39,7 @@ class Flight(BaseModel):
             return (
                     self.from_airport.code == other.src
                     and self.to_airport.code == other.dst
-                    and self.travel_date == f'{other.travel_date: %-d.%-m.%Y}'
+                    and self.travel_date == f'{other.travel_date:%-d.%-m.%Y}'
             )
 
         return super().__eq__(other)

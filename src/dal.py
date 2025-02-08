@@ -142,7 +142,7 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             await session.commit()
 
-            custom_logger.info(f'{result.rowcount} outdated {model.__tablename__} deleted')
+            custom_logger.info('%d outdated %s deleted', result.rowcount, model.__tablename__)
 
     @staticmethod
     async def get_flights(fetched_flights: list[FetchedFlight]) -> list[Flight]:
@@ -185,7 +185,7 @@ class DataAccessLayer:
                 result = await session.execute(stmt)
                 await session.commit()
 
-                custom_logger.info(f'{result.rowcount} new flights inserted')
+                custom_logger.info('%d new flights inserted', result.rowcount)
 
     @staticmethod
     async def update_flights(updated_price_by_flight: list[dict[str, int]]):
@@ -210,7 +210,7 @@ class DataAccessLayer:
 
             await session.commit()
 
-            custom_logger.info(f'{len(updated_price_by_flight)} flights updated')
+            custom_logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
     async def get_direction_price_history(src: str, dst: str) -> dict[date, list[dict[str, int]]]:

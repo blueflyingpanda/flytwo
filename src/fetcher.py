@@ -33,7 +33,7 @@ class FlightsFetcher:
 
         if forward_value is None or backward_value is None:
             try:
-                custom_logger.info(f'Fetching data from flyone: {src} -> {dst}')
+                custom_logger.info('Fetching data from flyone: %s -> %s', src, dst)
 
                 forward, backward = await fc.get_flights(
                     dep=src,
@@ -55,7 +55,7 @@ class FlightsFetcher:
                 )
 
         else:
-            custom_logger.info(f'Cache found: {src} -> {dst}')
+            custom_logger.info('Cache found: %s -> %s', src, dst)
 
             forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
             backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)

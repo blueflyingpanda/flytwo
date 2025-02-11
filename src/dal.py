@@ -213,7 +213,7 @@ class DataAccessLayer:
             custom_logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
-    async def get_direction_price_history(src: str, dst: str) -> dict[date, list[dict[str, int]]]:
+    async def get_direction_price_history(src: str, dst: str) -> dict[date, list[dict[str, str | int]]]:
         async with ASession() as session:
             stmt = select(Flight).where(Flight.src == src, Flight.dst == dst)
             result = await session.execute(stmt)
@@ -222,7 +222,14 @@ class DataAccessLayer:
             dt = datetime.now().isoformat()
 
             # adding current price to history
-            price_history_by_date = {
-                flight.travel_date: flight.history + [{'dt': dt, 'price': flight.price}] for flight in flights
-            }
+            price_history_by_date = {}
+
+            for flight in flights:
+                history = flight.history
+                if flight.price:
+                    history.append({'dt': dt, 'price': flight.price})
+
+                if history:
+                    price_history_by_date[flight.travel_date] = history
+
             return price_history_by_date

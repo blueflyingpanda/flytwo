@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import pytest
 from db import Flight
@@ -14,7 +14,7 @@ async def seed_flights(session):
         id=1,
         src='LAX',
         dst='JFK',
-        travel_date=datetime.today(),
+        travel_date=date.today(),
         price=300,
         history=[
             {'price': 200, 'dt': datetime(2023, 10, 1).isoformat()},
@@ -26,7 +26,7 @@ async def seed_flights(session):
         id=2,
         src='SFO',
         dst='SEA',
-        travel_date=datetime.today(),
+        travel_date=date.today(),
         price=150,
         history=[
             {'price': 150, 'dt': datetime(2023, 11, 15).isoformat()},
@@ -36,7 +36,7 @@ async def seed_flights(session):
         id=3,
         src='ORD',
         dst='ATL',
-        travel_date=datetime.today(),
+        travel_date=date.today(),
         price=500,
         history=[
             {'price': 450, 'dt': datetime(2023, 9, 20).isoformat()},
@@ -47,6 +47,30 @@ async def seed_flights(session):
     session.add_all([flight1, flight2, flight3])
     await session.commit()
 
+
+@pytest.fixture
+async def seed_flights_no_price(session):
+    flight4 = Flight(
+        id=4,
+        src='NYC',
+        dst='DCA',
+        travel_date=date.today(),
+        price=0,
+        history=[
+            {'price': 100, 'dt': datetime(2023, 11, 15).isoformat()}
+        ]
+    )
+    flight5 = Flight(
+        id=5,
+        src='IAD',
+        dst='BWI',
+        travel_date=date.today(),
+        price=0,
+        history=[]
+    )
+
+    session.add_all([flight4, flight5])
+    await session.commit()
 
 @pytest.mark.asyncio
 async def test_update_flights(session, seed_flights):
@@ -84,3 +108,28 @@ async def test_update_flights(session, seed_flights):
     assert len(flight3.history) == 2
     assert flight3.history[-1]['price'] == 500
     assert flight3.history[-1]['dt'] == datetime(2023, 9, 29).isoformat()
+
+
+@pytest.mark.asyncio
+async def test_get_direction_price_history(session, seed_flights, seed_flights_no_price):
+    """
+    Test if `get_direction_price_history` correctly retrieves flight price history.
+    """
+    today = date.today()
+    result = await DataAccessLayer.get_direction_price_history('LAX', 'JFK')
+
+    history = result[today]
+
+    assert len(history) == 4  # 3 history + 1 current
+    assert history[-2]['price'] == 300  # previous price from history
+    assert history[-1]['price'] == 300  # current price
+
+    result = await DataAccessLayer.get_direction_price_history('NYC', 'DCA')
+
+    history = result[today]
+
+    assert len(history) == 1  # No new entry since the price is 0. Free tickets don't exist
+    assert history[-1]['price'] == 100
+
+    result = await DataAccessLayer.get_direction_price_history('IAD', 'BWI')
+    assert today not in result # Empty history and price 0, nothing to show on graph

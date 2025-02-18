@@ -236,7 +236,7 @@ async def cmd_airports(message: types.Message):
 
     airport_by_code = await fc.airport_by_code
     msgs = [
-        f'{code} <{airport.name}> |{airport.country}|'
+        f'{code} [{airport.name}] |{airport.country}|'
         for code in sorted(iter(airport_by_code.keys())) if (airport := airport_by_code[code])
     ]
     notifier = TgBotNotifier(chat_id=message.chat.id)

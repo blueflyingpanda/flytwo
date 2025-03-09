@@ -30,7 +30,7 @@ delete_hook:
 	curl --request POST --url 'https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook'
 
 test:
-	python -m pytest -n 8 tests
+	python -m pytest -n 16 tests
 
 # This is a phony target, meaning it doesn't represent a file
 .PHONY: build clean migration migrate set_hook delete_hook test

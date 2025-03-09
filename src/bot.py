@@ -14,7 +14,7 @@ from dal import DataAccessLayer
 from fly_client.client import FlyoneClient
 from notifier import TgBotNotifier
 from parser import UrlParser
-from plotter import Plotter
+from plotter import Plotter, MissingPriceHistory
 
 logging.basicConfig(level=logging.INFO)
 
@@ -261,7 +261,12 @@ async def cmd_stats(message: types.Message):
 
     price_history = await DataAccessLayer.get_direction_price_history(src, dst)
 
-    buffer = await Plotter.plot_price_history(src, dst, price_history)
+    try:
+        buffer = await Plotter.plot_price_history(src, dst, price_history)
+    except MissingPriceHistory as e:
+        tg_notifier = TgBotNotifier(chat_id=message.chat.id)
+        await tg_notifier.send_err(f'{e}')
+        return
 
     chart_image = BufferedInputFile(buffer.read(), filename='price_chart.png')
     buffer.close()

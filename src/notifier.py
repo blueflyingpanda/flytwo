@@ -89,10 +89,18 @@ class TgBotNotifier:
 
             await asyncio.gather(*to_send)
 
-    async def send_err(self, msg: str):
+    @staticmethod
+    async def form_err(msg: str) -> str:
         warn = '⚠️'
-        err_msg = msg.partition(":")[2].strip()
-        await self.send_msgs([f'{warn} {err_msg} {warn}'.strip()])
+        left, sep, right = msg.partition(':')
+        err_msg = (right if sep else left).strip()
+
+        return f'{warn} {err_msg} {warn}'
+
+    async def send_err(self, msg: str):
+        err_msg = await self.form_err(msg)
+
+        await self.send_msgs([err_msg])
 
     @staticmethod
     async def form_direction_info(direction: 'db.Direction', airport_by_code: dict) -> str:

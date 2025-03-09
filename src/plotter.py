@@ -3,6 +3,11 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+class MissingPriceHistory(Exception):
+    """Raised when no price history is available"""
+
+
 class Plotter:
     @staticmethod
     async def plot_price_history(src: str, dst: str, price_history: dict) -> BytesIO:
@@ -22,7 +27,7 @@ class Plotter:
                 all_tracking_dates.add(tracking_date)
 
         if not all_tracking_dates:
-            raise ValueError("No price history available")
+            raise MissingPriceHistory('No price history available')
 
         min_date, max_date = min(all_tracking_dates), max(all_tracking_dates)
         x_dates = [min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)]
@@ -57,17 +62,17 @@ class Plotter:
             # Add markers at actual data points
             ax.scatter(x_valid, y_valid, color=colors[i % len(colors)], s=50, marker="o", edgecolors='black')
 
-        ax.set_title(f"Price History for {src} → {dst}")
-        ax.set_xlabel("Tracking Date")
-        ax.set_ylabel("Price")
-        ax.legend(title="Flight Dates")
-        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.set_title(f'Price History for {src} → {dst}')
+        ax.set_xlabel('Tracking Date')
+        ax.set_ylabel('Price')
+        ax.legend(title='Flight Dates')
+        ax.grid(True, linestyle='--', alpha=0.5)
         ax.set_xticks(x_ticks[::max(1, len(x_ticks) // 10)])  # Limit tick labels for readability
-        ax.set_xticklabels([d.strftime("%Y-%m-%d") for d in x_dates[::max(1, len(x_ticks) // 10)]], rotation=45)
+        ax.set_xticklabels([d.strftime('%Y-%m-%d') for d in x_dates[::max(1, len(x_ticks) // 10)]], rotation=45)
 
         # Save plot to PNG buffer
         png_buffer = BytesIO()
-        plt.savefig(png_buffer, format="png", bbox_inches="tight", dpi=100)
+        plt.savefig(png_buffer, format='png', bbox_inches='tight', dpi=100)
         plt.close(fig)
         png_buffer.seek(0)
 

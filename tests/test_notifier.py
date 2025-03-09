@@ -40,3 +40,9 @@ async def test_price_change():
     assert new == '29.01.2024:  80€   '
     assert increased == '30.01.2024: 100€ ❌ ⬆️ 25€ (was  75€)'
     assert decreased == '31.01.2024:  50€ ✅ ⬇️ 60€ (was 110€)'
+
+async def test_form_err_msg():
+    msg1 = await TgBotNotifier.form_err('Error: something went wrong')
+    msg2 = await TgBotNotifier.form_err('something went wrong')
+
+    assert msg1 == msg2

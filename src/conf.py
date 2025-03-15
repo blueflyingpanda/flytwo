@@ -1,5 +1,9 @@
 from os import environ
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 BOT_TOKEN = environ.get('BOT_TOKEN')
 
 CLOUD_FUNC_URL = environ.get('CLOUD_FUNC_URL')

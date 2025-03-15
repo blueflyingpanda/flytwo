@@ -50,6 +50,8 @@ async def cmd_help(message: types.Message):
         'Usage: Just type /directions\n\n'
         '/stats - draws the chart of price changes for certain direction.\n'
         'Usage: /stats <src> <dst>\n\n'
+        '/echo - returns chat id.\n'
+        'Usage: Just type /echo\n\n'
     )
     await message.reply(help_text)
 
@@ -202,6 +204,11 @@ async def cmd_less(message: types.Message):
         return
 
     await message.reply(f'Silent mode: {"ON" if schedule else "OFF"}')
+
+
+@router.message(Command(commands=['echo']))
+async def cmd_echo(message: types.Message):
+    await message.reply(f'Chat ID: {message.chat.id}')
 
 
 @router.message(Command(commands=['directions']))

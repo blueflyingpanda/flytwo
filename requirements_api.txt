@@ -1,0 +1,2 @@
+fastapi[standard,docs,testing]
+pydantic-settings

@@ -213,9 +213,14 @@ class DataAccessLayer:
             custom_logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
-    async def get_direction_price_history(src: str, dst: str) -> dict[date, list[dict[str, str | int]]]:
+    async def get_direction_price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[dict[str, str | int]]]:
+
         async with ASession() as session:
             stmt = select(Flight).where(Flight.src == src, Flight.dst == dst)
+
+            if dt:
+                stmt = stmt.where(Flight.travel_date == dt)
+
             result = await session.execute(stmt)
             flights = result.scalars().all()
 

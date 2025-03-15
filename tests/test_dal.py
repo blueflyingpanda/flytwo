@@ -1,6 +1,8 @@
 from datetime import datetime, date
 
 import pytest
+from datetime import timedelta
+
 from db import Flight
 from dal import DataAccessLayer
 
@@ -47,6 +49,31 @@ async def seed_flights(session):
     session.add_all([flight1, flight2, flight3])
     await session.commit()
 
+@pytest.fixture
+async def seed_flights_same_direction(session):
+    flight1 = Flight(
+        id=1,
+        src='LAX',
+        dst='JFK',
+        travel_date=date.today() - timedelta(days=1),
+        price=300,
+        history=[
+            {'price': 200, 'dt': datetime(2023, 10, 16).isoformat()},
+        ]
+    )
+    flight2 = Flight(
+        id=2,
+        src='LAX',
+        dst='JFK',
+        travel_date=date.today(),
+        price=150,
+        history=[
+            {'price': 100, 'dt': datetime(2023, 11, 15).isoformat()},
+        ]
+    )
+
+    session.add_all([flight1, flight2])
+    await session.commit()
 
 @pytest.fixture
 async def seed_flights_no_price(session):
@@ -133,3 +160,20 @@ async def test_get_direction_price_history(session, seed_flights, seed_flights_n
 
     result = await DataAccessLayer.get_direction_price_history('IAD', 'BWI')
     assert today not in result # Empty history and price 0, nothing to show on graph
+
+
+@pytest.mark.asyncio
+async def test_get_direction_price_history_with_date(session, seed_flights_same_direction):
+    """
+    Test if `get_direction_price_history` correctly retrieves flight price history for a specific date.
+    """
+    today = date.today()
+    result = await DataAccessLayer.get_direction_price_history('LAX', 'JFK', today)
+
+    assert len(result) == 1
+
+    history = result[today]
+
+    assert len(history) == 2  # 1 history + 1 current
+    assert history[-2]['price'] == 100  # previous price from history
+    assert history[-1]['price'] == 150  # current price

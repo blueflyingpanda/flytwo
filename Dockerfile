@@ -17,8 +17,8 @@ COPY src/ /app/src
 
 ENV PYTHONPATH="/app/src"
 
-# Expose port 8000
-EXPOSE 8000
+# Expose port 8080. NOTE! does not work on port 8000
+EXPOSE 8080
 
 # Run the API
-CMD ["sh", "-c", "uvicorn src.api.api:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uvicorn src.api.api:app --host 0.0.0.0 --port 8080"]

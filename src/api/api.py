@@ -14,7 +14,7 @@ async def ping():
 
 @app.get('/price-history/{src}/{dst}')
 async def price_history(src: str, dst: str, dt: date | None = None):
-    return await DataAccessLayer.get_direction_price_history(src, dst, dt)
+    return await DataAccessLayer.get_direction_price_history(src.upper(), dst.upper(), dt)
 
 @app.get('/airports')
 async def price_history():

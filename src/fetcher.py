@@ -7,9 +7,9 @@ from redis.asyncio import Redis
 import db
 from conf import REDIS_TTL
 from dal import DataAccessLayer
-from fly_client.client import FlyoneException, FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient
+from client.client import FlyoneException, FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient
 from logs import custom_logger
-from notifier import TgBotNotifier
+from bot.notifier import TgBotNotifier
 
 
 class FlightsFetcher:

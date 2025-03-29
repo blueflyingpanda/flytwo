@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from db import Chat, ASession, Direction, Flight, FlightBase
-from fly_client.client import Flight as FetchedFlight
+from client.client import Flight as FetchedFlight
 from logs import custom_logger
 
 

@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import db
 from dal import DataAccessLayer
-from fly_client.client import Flight
+from client.client import Flight
 
 
 class FlightsChangeDetector:

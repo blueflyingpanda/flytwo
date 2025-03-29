@@ -2,7 +2,7 @@ import pytest
 from db import Base, async_engine, ASession
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 async def setup_test_db():
     """
     Fixture to create database schema at the beginning of the test session.

@@ -1,14 +1,18 @@
 from contextlib import asynccontextmanager
 from datetime import date
-from fastapi import FastAPI
+from typing import Annotated
+
+from fastapi import FastAPI, Depends
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
 
+from api import auth
+from api.auth import JWT_ALGORITHM, User
 from api.cache_utils import price_history_key_builder, DateJsonCoder
 from cache import redis_client
+from client.client import FlyoneClient, Airport
 from dal import DataAccessLayer
-from fly_client.client import FlyoneClient
 from logs import custom_logger
 
 
@@ -16,18 +20,21 @@ from logs import custom_logger
 async def lifespan(app: FastAPI):
     try:
         async with redis_client() as redis_cache:
-            FastAPICache.init(RedisBackend(redis_cache), prefix="api-cache")
+            FastAPICache.init(RedisBackend(redis_cache), prefix='api-cache')
             yield
     except Exception as e:
-        custom_logger.error(f"Error during lifespan setup: {e}")
+        custom_logger.error(f'Error during lifespan setup: {e}')
         raise
 
-
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth.router)
 
+@app.get('/')
+async def index(user: Annotated[User, Depends(auth.get_current_user)]) -> User:
+    return user
 
 @app.get('/ping')
-async def ping():
+async def ping() -> dict[str, str]:
     return {'ping': 'pong'}
 
 @app.get('/price-history/{src}/{dst}')
@@ -36,12 +43,12 @@ async def ping():
     key_builder=price_history_key_builder,
     coder=DateJsonCoder,
 )  # Cache for 5 minutes
-async def price_history(src: str, dst: str, dt: date | None = None):
+async def price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[dict[str, str | int]]]:
     return await DataAccessLayer.get_direction_price_history(src.upper(), dst.upper(), dt)
 
 @app.get('/airports')
 @cache(expire=3600)  # Cache for 1 hour
-async def airports():
+async def airports() -> dict[str, Airport]:
     """Proxy endpoint to fetch airports from Flyone API."""
     fc = FlyoneClient()
     custom_logger.info('Fetching airports')

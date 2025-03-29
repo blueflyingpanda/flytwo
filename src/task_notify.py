@@ -8,8 +8,8 @@ from cache import redis_client
 from change_detector import FlightsChangeDetector
 from dal import DataAccessLayer
 from fetcher import FlightsFetcher
-from fly_client.client import FlyoneClient, Flight
-from notifier import TgBotNotifier
+from client.client import FlyoneClient, Flight
+from bot.notifier import TgBotNotifier
 
 
 async def main(event: dict | None = None, context=None):

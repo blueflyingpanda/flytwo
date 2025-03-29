@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from fly_client.client import Flight, Airport
-from notifier import TgBotNotifier
+from client.client import Flight, Airport
+from bot.notifier import TgBotNotifier
 
 
 async def test_price_change():

@@ -6,7 +6,7 @@ import aiohttp
 from pycountry import countries
 
 from conf import BOT_TOKEN
-from fly_client.client import Flight
+from client.client import Flight
 from logs import custom_logger
 
 if False:

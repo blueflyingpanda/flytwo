@@ -1,4 +1,4 @@
-from parser import UrlParser
+from bot.parser import UrlParser
 
 
 def test_url_parser():

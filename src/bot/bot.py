@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+from random import randint
 
 import aiohttp
 from aiogram import Bot, Dispatcher, types
@@ -9,9 +10,10 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 
+from cache import redis_client
 from conf import BOT_TOKEN, CLOUD_FUNC_URL
 from dal import DataAccessLayer
-from fly_client.client import FlyoneClient
+from client.client import FlyoneClient
 from notifier import TgBotNotifier
 from parser import UrlParser
 from plotter import Plotter, MissingPriceHistory
@@ -50,8 +52,8 @@ async def cmd_help(message: types.Message):
         'Usage: Just type /directions\n\n'
         '/stats - draws the chart of price changes for certain direction.\n'
         'Usage: /stats <src> <dst>\n\n'
-        '/echo - returns chat id.\n'
-        'Usage: Just type /echo\n\n'
+        '/auth - returns chat id and one-time code for authorization in API.\n'
+        'Usage: Just type /auth\n\n'
     )
     await message.reply(help_text)
 
@@ -206,9 +208,18 @@ async def cmd_less(message: types.Message):
     await message.reply(f'Silent mode: {"ON" if schedule else "OFF"}')
 
 
-@router.message(Command(commands=['echo']))
-async def cmd_echo(message: types.Message):
-    await message.reply(f'Chat ID: {message.chat.id}')
+@router.message(Command(commands=['auth']))
+async def cmd_auth(message: types.Message):
+    otp = randint(100000, 999999)  # 6-digit code - one time password
+
+    async with redis_client() as cache:
+        await cache.set(f'otp:{message.chat.id}', otp, ex=180)  # code expires in 3 minutes
+
+    await message.reply(
+        f'Chat ID: {message.chat.id}\n'
+        f'Code: {otp}\n\n'
+        'Don\'t share this information with anyone!'
+    )
 
 
 @router.message(Command(commands=['directions']))

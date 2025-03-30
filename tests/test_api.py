@@ -21,11 +21,13 @@ async def seed_data(session):
 
 
 @pytest.mark.asyncio
-async def test_directions_endpoint(session, seed_data, monkeypatch, redis_mock):
+async def test_directions_endpoint(session, seed_data, monkeypatch, redis_mock, redis_fake):
     """
     Test the `/directions` endpoint to ensure it returns directions that belong to the authorized user.
     """
     client = TestClient(app)
+    await redis_fake.set('otp:123', 'valid_otp')
+    val = await redis_fake.get('123')
 
     # Obtain a token
     response = client.post('/auth/token', data={'username': '123', 'password': 'valid_otp'})
@@ -37,9 +39,11 @@ async def test_directions_endpoint(session, seed_data, monkeypatch, redis_mock):
     assert response.status_code == 200
     directions = response.json()
     assert len(directions) == 1
-    assert directions[0]['src'] == 'LAX'
-    assert directions[0]['dst'] == 'JFK'
-    assert directions[0]['travel_date'] == '2023-12-25T00:00:00'
-    assert directions[0]['price'] == 300
-    assert directions[0]['chat_id'] == 1
-    assert directions[0]['id'] == 1
+
+    direction = directions[0]
+    assert direction['src'] == 'LAX'
+    assert direction['dst'] == 'JFK'
+    assert direction['travel_date'] == '2023-12-25T00:00:00'
+    assert direction['price'] == 300
+    assert direction['chat_id'] == 1
+    assert direction['id'] == 1

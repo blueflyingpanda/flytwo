@@ -3,4 +3,5 @@ pytest-asyncio
 pytest-xdist
 pytest-dotenv
 pytest-mock
+fakeredis
 aiosqlite

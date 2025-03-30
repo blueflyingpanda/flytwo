@@ -1,5 +1,5 @@
 import pytest
-from pytest_mock_resources import create_redis_fixture
+from fakeredis import FakeAsyncRedis
 
 from db import Base, async_engine, ASession
 
@@ -28,33 +28,14 @@ async def session():
         async with ASession() as session:
             yield session
 
-
-class MockRedis:
-    async def ping(self):
-        return True
-
-    async def getdel(self, key):
-        return b'valid_otp'
-
-    async def aclose(self):
-        pass
-
+@pytest.fixture
+def redis_fake():
+    return FakeAsyncRedis()
 
 @pytest.fixture
-def redis_mock(monkeypatch):
+def redis_mock(monkeypatch, redis_fake):
     def mock_redis_factory(*args, **kwargs):
-        return MockRedis()
-
-    # Patch the Redis constructor in redis.asyncio module
-    monkeypatch.setattr('redis.asyncio.Redis', mock_redis_factory)
-
-    yield
-
-@pytest.fixture
-def redis_patch(monkeypatch, redis_test):
-    # Create a factory function to return redis db for testing
-    def mock_redis_factory(*args, **kwargs):
-        return redis_test
+        return redis_fake
 
     # Patch the Redis constructor in redis.asyncio module
     monkeypatch.setattr('redis.asyncio.Redis', mock_redis_factory)

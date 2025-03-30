@@ -3,8 +3,13 @@ from datetime import date, datetime
 from pydantic import BaseModel
 
 
+class Ping(BaseModel):
+    ping: str
+
+
 class User(BaseModel):
     chat_id: str
+
 
 class UserDirection(BaseModel):
     src: str

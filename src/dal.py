@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from db import Chat, ASession, Direction, Flight, FlightBase
 from client.client import Flight as FetchedFlight
 from logs import custom_logger
+from plotter import PricePoint
 
 
 class DBUtils:
@@ -213,7 +214,7 @@ class DataAccessLayer:
             custom_logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
-    async def get_direction_price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[dict[str, str | int]]]:
+    async def get_direction_price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[PricePoint]]:
 
         async with ASession() as session:
             stmt = select(Flight).where(Flight.src == src, Flight.dst == dst)
@@ -224,15 +225,16 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             flights = result.scalars().all()
 
-            dt = datetime.now().isoformat()
+            dt = datetime.now()
 
             # adding current price to history
             price_history_by_date = {}
 
             for flight in flights:
-                history = flight.history
+                history = [PricePoint.model_validate(record) for record in flight.history]
+
                 if flight.price:
-                    history.append({'dt': dt, 'price': flight.price})
+                    history.append(PricePoint(price=flight.price, dt=dt))
 
                 if history:
                     price_history_by_date[flight.travel_date] = history

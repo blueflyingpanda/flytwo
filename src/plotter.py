@@ -1,16 +1,26 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
+from pydantic import BaseModel, RootModel
 
 
 class MissingPriceHistory(Exception):
     """Raised when no price history is available"""
 
 
+class PricePoint(BaseModel):
+    price: int
+    dt: datetime
+
+
+class PriceHistory(RootModel):
+    root: dict[date, list[PricePoint]]
+
+
 class Plotter:
     @staticmethod
-    async def plot_price_history(src: str, dst: str, price_history: dict) -> BytesIO:
+    async def plot_price_history(src: str, dst: str, price_history: dict[date, list[PricePoint]]) -> BytesIO:
         fig, ax = plt.subplots(figsize=(10, 6))
 
         offset = .3  # otherwise graph lines might overlap
@@ -23,7 +33,7 @@ class Plotter:
         # Collect all tracking dates to establish a common X-axis
         for histories in price_history.values():
             for record in histories:
-                tracking_date = datetime.fromisoformat(record['dt']).date()
+                tracking_date = record.dt.date()
                 all_tracking_dates.add(tracking_date)
 
         if not all_tracking_dates:
@@ -37,8 +47,8 @@ class Plotter:
             daily_prices = {}
 
             for record in records:
-                tracking_date = datetime.fromisoformat(record['dt']).date()
-                daily_prices[tracking_date] = record['price']
+                tracking_date = record.dt.date()
+                daily_prices[tracking_date] = record.price
 
             y_prices = []
             last_known_price = None

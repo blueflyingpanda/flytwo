@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -9,10 +9,8 @@ class User(BaseModel):
 class UserDirection(BaseModel):
     src: str
     dst: str
-    travel_date: datetime
+    travel_date: date
     price: int
-    chat_id: int
-    id: int
 
     class Config:
         from_attributes = True  # allows UserDirection.model_validate() on db.Direction instance from SqlAlchemy

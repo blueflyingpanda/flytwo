@@ -27,7 +27,6 @@ async def test_directions_endpoint(session, seed_data, monkeypatch, redis_mock, 
     """
     client = TestClient(app)
     await redis_fake.set('otp:123', 'valid_otp')
-    val = await redis_fake.get('123')
 
     # Obtain a token
     response = client.post('/auth/token', data={'username': '123', 'password': 'valid_otp'})
@@ -43,7 +42,5 @@ async def test_directions_endpoint(session, seed_data, monkeypatch, redis_mock, 
     direction = directions[0]
     assert direction['src'] == 'LAX'
     assert direction['dst'] == 'JFK'
-    assert direction['travel_date'] == '2023-12-25T00:00:00'
+    assert direction['travel_date'] == '2023-12-25'
     assert direction['price'] == 300
-    assert direction['chat_id'] == 1
-    assert direction['id'] == 1

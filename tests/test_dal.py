@@ -148,15 +148,15 @@ async def test_get_direction_price_history(session, seed_flights, seed_flights_n
     history = result[today]
 
     assert len(history) == 4  # 3 history + 1 current
-    assert history[-2]['price'] == 300  # previous price from history
-    assert history[-1]['price'] == 300  # current price
+    assert history[-2].price == 300  # previous price from history
+    assert history[-1].price == 300  # current price
 
     result = await DataAccessLayer.get_direction_price_history('NYC', 'DCA')
 
     history = result[today]
 
     assert len(history) == 1  # No new entry since the price is 0. Free tickets don't exist
-    assert history[-1]['price'] == 100
+    assert history[-1].price == 100
 
     result = await DataAccessLayer.get_direction_price_history('IAD', 'BWI')
     assert today not in result # Empty history and price 0, nothing to show on graph
@@ -175,5 +175,5 @@ async def test_get_direction_price_history_with_date(session, seed_flights_same_
     history = result[today]
 
     assert len(history) == 2  # 1 history + 1 current
-    assert history[-2]['price'] == 100  # previous price from history
-    assert history[-1]['price'] == 150  # current price
+    assert history[-2].price == 100  # previous price from history
+    assert history[-1].price == 150  # current price

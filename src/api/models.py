@@ -1,0 +1,28 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class User(BaseModel):
+    chat_id: str
+
+class UserDirection(BaseModel):
+    src: str
+    dst: str
+    travel_date: datetime
+    price: int
+    chat_id: int
+    id: int
+
+    class Config:
+        from_attributes = True  # allows UserDirection.model_validate() on db.Direction instance from SqlAlchemy
+
+
+class JwtPayload(BaseModel):
+    chat_id: str
+    expire: datetime
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

@@ -5,8 +5,8 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
 
+from api.models import JwtPayload, User, Token
 from cache import redis_client
 from conf import JWT_ACCESS_TOKEN_EXPIRE, JWT_SECRET
 from dal import DataAccessLayer
@@ -15,21 +15,6 @@ JWT_ALGORITHM = 'HS256'
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
-
-
-class User(BaseModel):
-    chat_id: str
-
-
-class JwtPayload(BaseModel):
-    chat_id: str
-    expire: datetime
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
 
 async def get_current_user(access_token: str = Depends(oauth2_scheme)) -> User:
     data = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])

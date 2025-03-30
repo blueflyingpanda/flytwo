@@ -3,15 +3,18 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
 
 from api import auth
-from api.auth import JWT_ALGORITHM, User
+from api.auth import User
 from api.cache_utils import price_history_key_builder, DateJsonCoder
+from api.models import UserDirection
 from cache import redis_client
 from client.client import FlyoneClient, Airport
+from conf import CORS_ORIGINS
 from dal import DataAccessLayer
 from logs import custom_logger
 
@@ -27,6 +30,15 @@ async def lifespan(app: FastAPI):
         raise
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth.router)
 
 @app.get('/')
@@ -36,6 +48,16 @@ async def index(user: Annotated[User, Depends(auth.get_current_user)]) -> User:
 @app.get('/ping')
 async def ping() -> dict[str, str]:
     return {'ping': 'pong'}
+
+@app.get('/directions')
+async def directions(user: Annotated[User, Depends(auth.get_current_user)]) -> list[UserDirection]:
+    fetched = await DataAccessLayer.get_directions_by_chats([int(user.chat_id)])
+    directions = list(fetched.values())
+
+    if directions:
+        directions = directions[0]
+
+    return [UserDirection.model_validate(direction) for direction in directions]
 
 @app.get('/price-history/{src}/{dst}')
 @cache(

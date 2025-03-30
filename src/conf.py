@@ -31,3 +31,5 @@ if JWT_ACCESS_TOKEN_EXPIRE is not None:
     JWT_ACCESS_TOKEN_EXPIRE = int(JWT_ACCESS_TOKEN_EXPIRE)
 
 # JWT_REFRESH_TOKEN_EXPIRE = int(environ.get('JWT_REFRESH_TOKEN_EXPIRE'))
+
+CORS_ORIGINS = environ.get('CORS_ORIGINS').split(',') if environ.get('CORS_ORIGINS') else ['*']

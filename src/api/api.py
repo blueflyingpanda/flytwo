@@ -68,10 +68,11 @@ async def directions(user: Annotated[User, Depends(auth.get_current_user)]) -> l
 async def price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[dict[str, str | int]]]:
     return await DataAccessLayer.get_direction_price_history(src.upper(), dst.upper(), dt)
 
-@app.get('/airports')
+@app.get('/airports', response_model=list[Airport])
 @cache(expire=3600)  # Cache for 1 hour
-async def airports() -> dict[str, Airport]:
+async def airports() -> list[Airport]:
     """Proxy endpoint to fetch airports from Flyone API."""
     fc = FlyoneClient()
     custom_logger.info('Fetching airports')
-    return await fc.airport_by_code
+    airport_by_code = await fc.airport_by_code
+    return list(airport_by_code.values())

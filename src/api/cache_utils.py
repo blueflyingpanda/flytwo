@@ -48,7 +48,7 @@ class DateJsonCoder(Coder):
     @staticmethod
     def _convert_key(key):
         """Convert datetime.date keys to strings."""
-        if isinstance(key, date):
+        if isinstance(key, (date, datetime)):
             return key.isoformat()
         return key
 

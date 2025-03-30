@@ -51,7 +51,7 @@ async def cmd_help(message: types.Message):
         '/directions - lists all directions related to the chat.\n'
         'Usage: Just type /directions\n\n'
         '/stats - draws the chart of price changes for certain direction.\n'
-        'Usage: /stats <src> <dst>\n\n'
+        'Usage: /stats <src> <dst> OR /stats <src> <dst> <date>\n\n'
         '/auth - returns chat id and one-time code for authorization in API.\n'
         'Usage: Just type /auth\n\n'
     )
@@ -264,20 +264,36 @@ async def cmd_airports(message: types.Message):
 async def cmd_stats(message: types.Message):
     command_parts = message.text.split()
 
-    if len(command_parts) != 3:
-        await message.reply('Usage: /stats <src> <dst>')
-        return
+    dt_fmt = '%d.%m.%Y'
 
-    _, src, dst = command_parts
+    dt = None
+
+    match len(command_parts):
+        case 3:
+            _, src, dst = command_parts
+
+        case 4:
+            _, src, dst, dt = command_parts
+
+        case _:
+            await message.reply('Usage: /stats <src> <dst> OR /stats <src> <dst> <date>')
+            return
 
     src = src.upper()
     dst = dst.upper()
+
+    if dt:
+        try:
+            dt = datetime.strptime(dt, dt_fmt).date()
+        except ValueError:
+            await message.reply('Invalid date format. Please use DD.MM.YYYY')
+            return
 
     if src == dst:
         await message.reply('Source cannot be the same as destination.')
         return
 
-    price_history = await DataAccessLayer.get_direction_price_history(src, dst)
+    price_history = await DataAccessLayer.get_direction_price_history(src, dst, dt)
 
     try:
         buffer = await Plotter.plot_price_history(src, dst, price_history)
@@ -289,7 +305,12 @@ async def cmd_stats(message: types.Message):
     chart_image = BufferedInputFile(buffer.read(), filename='price_chart.png')
     buffer.close()
 
-    await message.answer_photo(photo=chart_image, caption=f'Price History for {src} → {dst}')
+    on_dt = f'on {dt.strftime(dt_fmt)}' if dt else ''
+
+    await message.answer_photo(
+        photo=chart_image,
+        caption=f'Price History for {src} → {dst} {on_dt}'.strip()
+    )
 
 
 dp.include_router(router)

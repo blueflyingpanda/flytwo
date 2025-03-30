@@ -24,4 +24,4 @@ async def redis_client() -> AsyncGenerator[Redis, Any]:
     except Exception as e:
         custom_logger.error(e)
     finally:
-        await cache.close()
+        await cache.aclose()

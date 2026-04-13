@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 class Ping(BaseModel):
     ping: str
+    pong: str
 
 
 class NotifyRequest(BaseModel):

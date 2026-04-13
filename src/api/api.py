@@ -54,7 +54,7 @@ async def index(user: Annotated[User, Depends(auth.get_current_user)]) -> User:
 
 @app.get('/ping')
 async def ping() -> Ping:
-    return Ping(ping='pong')
+    return Ping(ping='pong', pong='ping')
 
 
 @app.get('/directions')

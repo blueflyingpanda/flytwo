@@ -12,10 +12,10 @@ COPY alembic.ini .
 COPY migrations/ migrations/
 COPY src/ .
 
-ENV PYTHONPATH="/app/src"
+ENV PYTHONPATH="/app"
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8080
 
 # Run the API
-CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "8080"]

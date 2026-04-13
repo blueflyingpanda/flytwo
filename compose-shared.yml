@@ -1,6 +1,6 @@
 services:
   # postgres, redis, and nginx are reused from another application, so we only define the API service here
-  api:
+  bot:
     build: .
     restart: always
     env_file: .env

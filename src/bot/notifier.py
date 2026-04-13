@@ -7,7 +7,7 @@ from pycountry import countries
 
 from client.client import Flight
 from conf import BOT_TOKEN
-from logs import custom_logger
+from logs import logger
 
 if False:
     import db
@@ -78,7 +78,7 @@ class TgBotNotifier:
             """fixes connection timeout to https://api.telegram.org"""
             await asyncio.sleep(random.uniform(0.1, 1.0))
             resp = await session.post(self.url, json=data, ssl=False)
-            custom_logger.info(await resp.text())
+            logger.info(await resp.text())
 
         async with aiohttp.ClientSession() as session:
             to_send = []

@@ -18,7 +18,7 @@ from cache import redis_client
 from client.client import Airport, FlyoneClient
 from conf import BOT_SECRET, CORS_ORIGINS
 from dal import DataAccessLayer
-from logs import custom_logger
+from logs import logger
 from plotter import PriceHistory
 from task_notify import main as notify_main
 
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
             FastAPICache.init(RedisBackend(redis_cache), prefix='api-cache')
             yield
     except Exception as e:
-        custom_logger.error(f'Error during lifespan setup: {e}')
+        logger.error(f'Error during lifespan setup: {e}')
         raise
 
 
@@ -80,7 +80,7 @@ async def price_history(src: str, dst: str, dt: date | None = None) -> PriceHist
 async def airports() -> list[Airport]:
     """Proxy endpoint to fetch airports from Flyone API."""
     fc = FlyoneClient()
-    custom_logger.info('Fetching airports')
+    logger.info('Fetching airports')
     airport_by_code = await fc.airport_by_code
     return list(airport_by_code.values())
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from client.client import Flight as FetchedFlight
 from db import ASession, Chat, Direction, Flight, FlightBase
-from logs import custom_logger
+from logs import logger
 from plotter import PricePoint
 
 
@@ -136,7 +136,7 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             await session.commit()
 
-            custom_logger.info('%d outdated %s deleted', result.rowcount, model.__tablename__)
+            logger.info('%d outdated %s deleted', result.rowcount, model.__tablename__)
 
     @staticmethod
     async def get_flights(fetched_flights: list[FetchedFlight]) -> list[Flight]:
@@ -179,7 +179,7 @@ class DataAccessLayer:
                 result = await session.execute(stmt)
                 await session.commit()
 
-                custom_logger.info('%d new flights inserted', result.rowcount)
+                logger.info('%d new flights inserted', result.rowcount)
 
     @staticmethod
     async def update_flights(updated_price_by_flight: list[dict[str, int]]):
@@ -202,7 +202,7 @@ class DataAccessLayer:
 
             await session.commit()
 
-            custom_logger.info('%d flights updated', len(updated_price_by_flight))
+            logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
     async def get_direction_price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[PricePoint]]:

@@ -1,4 +1,4 @@
 import logging
 
-custom_logger = logging.getLogger('custom')
-custom_logger.setLevel(logging.DEBUG)
+logger = logging.getLogger('default')
+logger.setLevel(logging.DEBUG)

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from conf import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from logs import custom_logger
+from logs import logger
 
 ALCHEMY_ECHO = False
 DESCRIBE = False
@@ -77,7 +77,7 @@ async def main():
 
         for table in Base.metadata.sorted_tables:
             create_table_sql = f'{(CreateTable(table).compile(dialect=dialect()))}'
-            custom_logger.ingo(create_table_sql)
+            logger.ingo(create_table_sql)
     else:
         async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

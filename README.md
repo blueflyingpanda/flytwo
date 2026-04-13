@@ -21,7 +21,7 @@ BOT_TOKEN=<your bot token (obtained from @BotFather)>
 
 DB_HOST=localhost
 DB_NAME=flytwo
-DB_PORT=6432
+DB_PORT=5432
 DB_USER=flytwo
 DB_PASS=<your password goes here>
 ```
@@ -50,7 +50,7 @@ In this configuration redis cache will not work as well as /go command. But shou
 
 Working directory `~/flytwo/src`
 
-Run bot (frontend) `python bot.py`
+Run bot (frontend) `python -m bot.bot`
 
 Run notification task (backend) `python task_notify.py`
 

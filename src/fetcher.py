@@ -9,7 +9,7 @@ from bot.notifier import TgBotNotifier
 from client.client import FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient, FlyoneError
 from conf import REDIS_TTL
 from dal import DataAccessLayer
-from logs import custom_logger
+from logs import logger
 
 
 class FlightsFetcher:
@@ -32,14 +32,14 @@ class FlightsFetcher:
 
         if forward_value is None or backward_value is None:
             try:
-                custom_logger.info('Fetching data from flyone: %s -> %s', src, dst)
+                logger.info('Fetching data from flyone: %s -> %s', src, dst)
 
                 forward, backward = await fc.get_flights(
                     dep=src, arr=dst, dep_date=travel_date, arr_date=travel_date, currency='EUR'
                 )
             except FlyoneError as e:
                 err_msg = f'{e}'
-                custom_logger.error(err_msg)
+                logger.error(err_msg)
                 await notifier.send_err(err_msg)
                 return
 
@@ -50,7 +50,7 @@ class FlightsFetcher:
                 )
 
         else:
-            custom_logger.info('Cache found: %s -> %s', src, dst)
+            logger.info('Cache found: %s -> %s', src, dst)
 
             forward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(forward_value)
             backward: list[Flight] = FLIGHTS_TYPE_ADAPTER.validate_json(backward_value)

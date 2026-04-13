@@ -5,7 +5,7 @@ BUILD_DIR := yc_build
 BUILD_ARC := yc_build.zip
 
 api:
-	docker build -t flytwo-api -f Dockerfile.api .
+	docker build -t flytwo -f Dockerfile .
 
 build:
 	mkdir -p $(BUILD_DIR)

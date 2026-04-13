@@ -54,6 +54,29 @@ Run bot (frontend) `python -m bot.bot`
 
 Run notification task (backend) `python task_notify.py`
 
+### Deployment
+
+#### Standalone (includes its own postgres and redis)
+```
+docker compose -f docker-compose.yml up -d
+```
+
+#### Shared (reuses existing postgres and redis from another compose project)
+
+First time only — create the shared network and attach existing services to it:
+```
+docker network create shared
+docker network connect shared <postgres-container-name>
+docker network connect shared <redis-container-name>
+```
+
+Set `DB_HOST` and `REDIS_HOST` in `.env` to the container names above, then:
+```
+docker compose -f compose-shared.yml up -d
+```
+
+Replace `<domain>` in `nginx.flytwo.conf` with your domain before starting.
+
 ### Guidelines
 
 The code should comply with [PEP8](https://peps.python.org/pep-0008/)

@@ -1,0 +1,27 @@
+services:
+  api:
+    build: .
+    restart: always
+    env_file: .env
+    expose:
+      - "8080"
+    networks:
+      - shared
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "88:88"
+      - "8443:8443"
+    depends_on:
+      - api
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/flytwo.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - shared
+
+networks:
+  shared:
+    external: true

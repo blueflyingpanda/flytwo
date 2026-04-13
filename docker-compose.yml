@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT:-6432}:6432"
+      - "${DB_PORT:-6432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,7 +19,7 @@ services:
     image: redis:8-alpine
     command: redis-server --requirepass ${REDIS_PASS}
     ports:
-      - "${REDIS_PORT:-6380}:6380"
+      - "${REDIS_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASS}", "ping"]
       interval: 5s

@@ -8,12 +8,13 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --extra api --no-dev --no-install-project
 
-COPY src/ /app/src
+COPY alembic.ini .
+COPY migrations/ migrations/
+COPY src/ .
 
 ENV PYTHONPATH="/app/src"
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Expose port 8080. NOTE! does not work on port 8000
 EXPOSE 8080
 
 # Run the API

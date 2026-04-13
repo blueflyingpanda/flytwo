@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import jwt
@@ -21,7 +21,7 @@ async def get_current_user(access_token: str = Depends(oauth2_scheme)) -> User:
     data = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     payload = JwtPayload(**data)
 
-    if payload.expire < datetime.now(timezone.utc):
+    if payload.expire < datetime.now(UTC):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Expired token')
 
     chat = await DataAccessLayer.get_chat(int(payload.chat_id))
@@ -47,7 +47,7 @@ async def token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> T
     if not otp or otp.decode() != form_data.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or missing code')
 
-    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE)
+    expire = datetime.now(UTC) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE)
     payload = JwtPayload(chat_id=chat_id, expire=expire)
     access_token = jwt.encode(jsonable_encoder(payload.model_dump()), JWT_SECRET, JWT_ALGORITHM)
 

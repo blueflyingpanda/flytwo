@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime
-from typing import Any, Type
+from typing import Any
 
 from sqlalchemy import Row, RowMapping, and_, case, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -128,7 +128,7 @@ class DataAccessLayer:
         return directions_by_chats
 
     @staticmethod
-    async def cleanup_outdated(model: Type[FlightBase]):
+    async def cleanup_outdated(model: type[FlightBase]):
         current_date = datetime.now(UTC).date()
 
         async with ASession() as session:

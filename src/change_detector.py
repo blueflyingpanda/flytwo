@@ -18,12 +18,11 @@ class FlightsChangeDetector:
         updated_price_by_flight: list[dict[str, int]] = []
 
         for flight in fetched_flights:
-            if stored_flight := stored_flights.get(flight):
-                if stored_flight.price != int(flight.price):
-                    updated_price_by_flight.append({'id': stored_flight.id, 'price': int(flight.price)})
+            if (stored_flight := stored_flights.get(flight)) and stored_flight.price != int(flight.price):
+                updated_price_by_flight.append({'id': stored_flight.id, 'price': int(flight.price)})
 
-                    flight.prev_price = Decimal(stored_flight.price)  # noqa
-                    changed_flights.append(flight)
+                flight.prev_price = Decimal(stored_flight.price)
+                changed_flights.append(flight)
 
         if updated_price_by_flight and not manual:
             await DataAccessLayer.update_flights(updated_price_by_flight)

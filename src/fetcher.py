@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 
 import db
 from bot.notifier import TgBotNotifier
-from client.client import FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient, FlyoneException
+from client.client import FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient, FlyoneError
 from conf import REDIS_TTL
 from dal import DataAccessLayer
 from logs import custom_logger
@@ -37,7 +37,7 @@ class FlightsFetcher:
                 forward, backward = await fc.get_flights(
                     dep=src, arr=dst, dep_date=travel_date, arr_date=travel_date, currency='EUR'
                 )
-            except FlyoneException as e:
+            except FlyoneError as e:
                 err_msg = f'{e}'
                 custom_logger.error(err_msg)
                 await notifier.send_err(err_msg)

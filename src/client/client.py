@@ -52,7 +52,7 @@ class Flight(BaseModel):
 FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])
 
 
-class FlyoneException(Exception):
+class FlyoneError(Exception):
     """Base exception for all Flyone client exceptions."""
 
 
@@ -65,12 +65,11 @@ class FlyoneClient:
 
     def __init__(self):
         self._token: str = ''
-        self._airports_by_code: dict[str, 'Airport'] = {}
+        self._airports_by_code: dict[str, Airport] = {}
 
     async def refresh_token(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.view_url, ssl=self.ssl) as response:
-                self._token = response.cookies.get('COOKIE_TOKEN').value
+        async with aiohttp.ClientSession() as session, session.get(self.view_url, ssl=self.ssl) as response:
+            self._token = response.cookies.get('COOKIE_TOKEN').value
 
     @property
     async def token(self):
@@ -89,7 +88,7 @@ class FlyoneClient:
                         await self.refresh_token()
                         return await self.request(path, data, retry=True)
                     else:
-                        raise FlyoneException(f'{response.status}: {await response.text()}')
+                        raise FlyoneError(f'{response.status}: {await response.text()}')
 
                 response_data = await response.json()
 
@@ -97,7 +96,7 @@ class FlyoneClient:
 
                 if not result['isSuccess']:
                     msgs = result['msgs']
-                    raise FlyoneException('\n'.join((f'{msg["code"]}: {msg["msgText"]}' for msg in msgs)))
+                    raise FlyoneError('\n'.join(f'{msg["code"]}: {msg["msgText"]}' for msg in msgs))
 
                 return response_data
 

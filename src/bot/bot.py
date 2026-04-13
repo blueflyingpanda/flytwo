@@ -13,7 +13,7 @@ from cache import redis_client
 from client.client import FlyoneClient
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
 from dal import DataAccessLayer
-from plotter import MissingPriceHistory, Plotter
+from plotter import MissingPriceHistoryError, Plotter
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -125,7 +125,7 @@ async def cmd_add(message: types.Message):
         await message.reply('Bot was not started yet!')
         return
 
-    direction, created = await DataAccessLayer.create_direction(
+    _, created = await DataAccessLayer.create_direction(
         chat_id=chat.id, src=src, dst=dst, travel_date=travel_date, price=price
     )
 
@@ -176,13 +176,15 @@ async def cmd_remove(message: types.Message):
 @router.message(Command(commands=['go']))
 async def cmd_go(message: types.Message):
     await message.reply('Manual launch started ...')
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
+    async with (
+        aiohttp.ClientSession() as session,
+        session.post(
             f'{API_URL}/notify',
             json={'chat_id': message.chat.id, 'manual': True},
             headers={'x-notify-secret': BOT_SECRET},
-        ):
-            await message.reply('Manual launch finished!')
+        ),
+    ):
+        await message.reply('Manual launch finished!')
 
 
 @router.message(Command(commands=['schedule']))
@@ -225,7 +227,7 @@ async def cmd_directions(message: types.Message):
         await message.reply('Bot was not started yet!')
         return
 
-    chat, directions = next(iter(directions_by_chats.items()))
+    _, directions = next(iter(directions_by_chats.items()))
 
     if not directions:
         await message.reply('No directions found.')
@@ -294,7 +296,7 @@ async def cmd_stats(message: types.Message):
 
     try:
         buffer = await Plotter.plot_price_history(src, dst, price_history)
-    except MissingPriceHistory as e:
+    except MissingPriceHistoryError as e:
         tg_notifier = TgBotNotifier(chat_id=message.chat.id)
         await tg_notifier.send_err(f'{e}')
         return

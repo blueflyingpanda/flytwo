@@ -10,7 +10,7 @@ from conf import BOT_TOKEN
 from logs import custom_logger
 
 if False:
-    import db  # noqa
+    import db
 
 
 class TgBotNotifier:
@@ -123,9 +123,9 @@ class TgBotNotifier:
             dst_country = None
 
         if src_country is not None:
-            src_flag = src_country.flag  # noqa
+            src_flag = src_country.flag
         if dst_country is not None:
-            dst_flag = dst_country.flag  # noqa
+            dst_flag = dst_country.flag
 
         return (
             f'From: {src} {src_flag}\n'

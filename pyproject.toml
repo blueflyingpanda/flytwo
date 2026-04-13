@@ -56,10 +56,38 @@ packages = ["src/client"]
 
 [tool.ruff]
 line-length = 120
-exclude = ["migrations"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    ".env",
+    "migrations",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E402",   # imports at the top of the file
+    "E501",   # line too long (handled by formatter)
+    "E731",   # Do not assign a `lambda` expression, use a `def` - rule ignored
+    "RUF005", # (*list_display, 'is_deleted') instead of concatenation list_display + ('is_deleted',) - rule ignored
+    "RUF010", # f'Connection error: {e}' -> f'Connection error: {e!s}'
+    "SIM105", # Use `contextlib.suppress(TypeError)` instead of `try`-`except`-`pass` - rule ignored
+    "SIM108", # Use `getattr` with a default value instead of catching `AttributeError` - rule ignored
+    "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+]
 
 [tool.ruff.format]
 quote-style = "single"
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]

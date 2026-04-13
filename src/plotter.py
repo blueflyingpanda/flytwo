@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import BaseModel, RootModel
 
 
-class MissingPriceHistory(Exception):
+class MissingPriceHistoryError(Exception):
     """Raised when no price history is available"""
 
 
@@ -49,7 +49,7 @@ class Plotter:
                 all_tracking_dates.add(tracking_date)
 
         if not all_tracking_dates:
-            raise MissingPriceHistory('No price history available')
+            raise MissingPriceHistoryError('No price history available')
 
         min_date, max_date = min(all_tracking_dates), max(all_tracking_dates)
         x_dates = [min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)]

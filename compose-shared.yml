@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - shared
 
   redis:
     image: redis:8-alpine
@@ -26,6 +28,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - shared
 
   bot:
     build:
@@ -34,7 +38,9 @@ services:
     env_file: .env
     environment:
       DB_HOST: postgres
+      DB_PORT: 5432
       REDIS_HOST: redis
+      REDIS_PORT: 6379
     expose:
       - "8080"
     depends_on:
@@ -42,7 +48,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - shared
 
 
 volumes:
   postgres_data:
+
+networks:
+  shared:
+    external: true

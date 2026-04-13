@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.api import app
-from db import Direction, Chat
+from db import Chat, Direction
 
 
 @pytest.fixture

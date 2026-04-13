@@ -1,10 +1,9 @@
-from datetime import datetime, date
+from datetime import date, datetime, timedelta
 
 import pytest
-from datetime import timedelta
 
-from db import Flight
 from dal import DataAccessLayer
+from db import Flight
 
 
 @pytest.fixture
@@ -22,7 +21,7 @@ async def seed_flights(session):
             {'price': 200, 'dt': datetime(2023, 10, 1).isoformat()},
             {'price': 250, 'dt': datetime(2023, 10, 15).isoformat()},
             {'price': 300, 'dt': datetime(2023, 10, 16).isoformat()},
-        ]
+        ],
     )
     flight2 = Flight(
         id=2,
@@ -32,7 +31,7 @@ async def seed_flights(session):
         price=150,
         history=[
             {'price': 150, 'dt': datetime(2023, 11, 15).isoformat()},
-        ]
+        ],
     )
     flight3 = Flight(
         id=3,
@@ -43,11 +42,12 @@ async def seed_flights(session):
         history=[
             {'price': 450, 'dt': datetime(2023, 9, 20).isoformat()},
             {'price': 500, 'dt': datetime(2023, 9, 29).isoformat()},
-        ]
+        ],
     )
 
     session.add_all([flight1, flight2, flight3])
     await session.commit()
+
 
 @pytest.fixture
 async def seed_flights_same_direction(session):
@@ -59,7 +59,7 @@ async def seed_flights_same_direction(session):
         price=300,
         history=[
             {'price': 200, 'dt': datetime(2023, 10, 16).isoformat()},
-        ]
+        ],
     )
     flight2 = Flight(
         id=2,
@@ -69,11 +69,12 @@ async def seed_flights_same_direction(session):
         price=150,
         history=[
             {'price': 100, 'dt': datetime(2023, 11, 15).isoformat()},
-        ]
+        ],
     )
 
     session.add_all([flight1, flight2])
     await session.commit()
+
 
 @pytest.fixture
 async def seed_flights_no_price(session):
@@ -83,21 +84,13 @@ async def seed_flights_no_price(session):
         dst='DCA',
         travel_date=date.today(),
         price=0,
-        history=[
-            {'price': 100, 'dt': datetime(2023, 11, 15).isoformat()}
-        ]
+        history=[{'price': 100, 'dt': datetime(2023, 11, 15).isoformat()}],
     )
-    flight5 = Flight(
-        id=5,
-        src='IAD',
-        dst='BWI',
-        travel_date=date.today(),
-        price=0,
-        history=[]
-    )
+    flight5 = Flight(id=5, src='IAD', dst='BWI', travel_date=date.today(), price=0, history=[])
 
     session.add_all([flight4, flight5])
     await session.commit()
+
 
 @pytest.mark.asyncio
 async def test_update_flights(session, seed_flights):
@@ -159,7 +152,7 @@ async def test_get_direction_price_history(session, seed_flights, seed_flights_n
     assert history[-1].price == 100
 
     result = await DataAccessLayer.get_direction_price_history('IAD', 'BWI')
-    assert today not in result # Empty history and price 0, nothing to show on graph
+    assert today not in result  # Empty history and price 0, nothing to show on graph
 
 
 @pytest.mark.asyncio

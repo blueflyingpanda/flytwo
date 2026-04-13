@@ -1,16 +1,15 @@
 from decimal import Decimal
 
 import db
-from dal import DataAccessLayer
 from client.client import Flight
+from dal import DataAccessLayer
 
 
 class FlightsChangeDetector:
-
     @staticmethod
     async def get_changed_flights(
-            fetched_flights: list[Flight],
-            manual: bool = False,
+        fetched_flights: list[Flight],
+        manual: bool = False,
     ):
         flights: list[db.Flight] = await DataAccessLayer.get_flights(fetched_flights)
         stored_flights: dict[db.Flight, db.Flight] = {flight: flight for flight in flights}
@@ -19,13 +18,9 @@ class FlightsChangeDetector:
         updated_price_by_flight: list[dict[str, int]] = []
 
         for flight in fetched_flights:
-
             if stored_flight := stored_flights.get(flight):
                 if stored_flight.price != int(flight.price):
-                    updated_price_by_flight.append({
-                        'id': stored_flight.id,
-                        'price': int(flight.price)
-                    })
+                    updated_price_by_flight.append({'id': stored_flight.id, 'price': int(flight.price)})
 
                     flight.prev_price = Decimal(stored_flight.price)  # noqa
                     changed_flights.append(flight)

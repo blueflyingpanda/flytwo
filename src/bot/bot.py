@@ -1,24 +1,19 @@
 import asyncio
-import json
-import logging
 from datetime import datetime
 from random import randint
 
 import aiohttp
-from aiogram import Bot, Dispatcher, types
-from aiogram import Router
+from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 
+from bot.notifier import TgBotNotifier
+from bot.parser import UrlParser
 from cache import redis_client
-from conf import BOT_TOKEN, CLOUD_FUNC_URL
-from dal import DataAccessLayer
 from client.client import FlyoneClient
-from notifier import TgBotNotifier
-from parser import UrlParser
-from plotter import Plotter, MissingPriceHistory
-
-logging.basicConfig(level=logging.INFO)
+from conf import API_URL, BOT_SECRET, BOT_TOKEN
+from dal import DataAccessLayer
+from plotter import MissingPriceHistory, Plotter
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -63,9 +58,9 @@ async def cmd_start(message: types.Message):
     _, created = await DataAccessLayer.create_chat(tg_id=message.chat.id)
 
     if created:
-        await message.reply(f'Bot started! Use /help for more info.')
+        await message.reply('Bot started! Use /help for more info.')
     else:
-        await message.reply(f'Bot is already running! Use /help for more info.')
+        await message.reply('Bot is already running! Use /help for more info.')
 
 
 @router.message(Command(commands=['stop']))
@@ -73,9 +68,9 @@ async def cmd_stop(message: types.Message):
     deleted = await DataAccessLayer.remove_chat(tg_id=message.chat.id)
 
     if deleted:
-        await message.reply(f'Bot stopped!')
+        await message.reply('Bot stopped!')
     else:
-        await message.reply(f'Bot is already stopped.')
+        await message.reply('Bot is already stopped.')
 
 
 @router.message(Command(commands=['add']))
@@ -100,7 +95,7 @@ async def cmd_add(message: types.Message):
         return
 
     try:
-        travel_date = datetime.strptime(travel_date_str, "%d.%m.%Y").date()
+        travel_date = datetime.strptime(travel_date_str, '%d.%m.%Y').date()
     except ValueError:
         await message.reply('Invalid travel date format. Please use DD.MM.YYYY')
         return
@@ -173,16 +168,20 @@ async def cmd_remove(message: types.Message):
     deleted = await DataAccessLayer.remove_direction(chat_id=chat.id, src=src, dst=dst)
 
     if deleted:
-        await message.reply(f'Direction has been removed.')
+        await message.reply('Direction has been removed.')
     else:
-        await message.reply(f'Direction was not found.')
+        await message.reply('Direction was not found.')
 
 
 @router.message(Command(commands=['go']))
 async def cmd_go(message: types.Message):
     await message.reply('Manual launch started ...')
     async with aiohttp.ClientSession() as session:
-        async with session.post(CLOUD_FUNC_URL, json={'chat_id': message.chat.id, 'manual': True}):
+        async with session.post(
+            f'{API_URL}/notify',
+            json={'chat_id': message.chat.id, 'manual': True},
+            headers={'x-notify-secret': BOT_SECRET},
+        ):
             await message.reply('Manual launch finished!')
 
 
@@ -215,11 +214,7 @@ async def cmd_auth(message: types.Message):
     async with redis_client() as cache:
         await cache.set(f'otp:{message.chat.id}', otp, ex=180)  # code expires in 3 minutes
 
-    await message.reply(
-        f'Chat ID: {message.chat.id}\n'
-        f'Code: {otp}\n\n'
-        'Don\'t share this information with anyone!'
-    )
+    await message.reply(f"Chat ID: {message.chat.id}\nCode: {otp}\n\nDon't share this information with anyone!")
 
 
 @router.message(Command(commands=['directions']))
@@ -255,10 +250,12 @@ async def cmd_airports(message: types.Message):
     airport_by_code = await fc.airport_by_code
     msgs = [
         f'{code} [{airport.name}] |{airport.country}|'
-        for code in sorted(iter(airport_by_code.keys())) if (airport := airport_by_code[code])
+        for code in sorted(iter(airport_by_code.keys()))
+        if (airport := airport_by_code[code])
     ]
     notifier = TgBotNotifier(chat_id=message.chat.id)
     await notifier.send_msgs(['\n'.join(msgs)])
+
 
 @router.message(Command(commands=['stats']))
 async def cmd_stats(message: types.Message):
@@ -307,29 +304,15 @@ async def cmd_stats(message: types.Message):
 
     on_dt = f'on {dt.strftime(dt_fmt)}' if dt else ''
 
-    await message.answer_photo(
-        photo=chart_image,
-        caption=f'Price History for {src} → {dst} {on_dt}'.strip()
-    )
+    await message.answer_photo(photo=chart_image, caption=f'Price History for {src} → {dst} {on_dt}'.strip())
 
 
 dp.include_router(router)
 
 
-async def handler(event, context):
-
-    body = json.loads(event['body'])
-    update = types.Update(**body)
-    await dp.feed_update(bot, update)
-
-    return {
-        'statusCode': 200,
-        'body': 'success'
-    }
-
-
 async def main():
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     asyncio.run(main())

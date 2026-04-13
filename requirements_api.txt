@@ -1,4 +1,0 @@
-fastapi[standard,docs,testing]
-pydantic-settings
-fastapi-cache2
-pyjwt

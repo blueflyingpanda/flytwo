@@ -1,11 +1,11 @@
 import asyncio
 from datetime import date
 
-from sqlalchemy import String, ForeignKey, UniqueConstraint, BigInteger, Boolean, text, JSON
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
+from sqlalchemy import JSON, BigInteger, Boolean, ForeignKey, String, UniqueConstraint, text
+from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from conf import DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME
+from conf import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from logs import custom_logger
 
 ALCHEMY_ECHO = False
@@ -44,16 +44,12 @@ class Direction(FlightBase):
 
     chat: Mapped['Chat'] = relationship(back_populates='directions')
 
-    __table_args__ = (
-        UniqueConstraint('src', 'dst', 'chat_id', name='uix_src_dst_chat_id'),
-    )
+    __table_args__ = (UniqueConstraint('src', 'dst', 'chat_id', name='uix_src_dst_chat_id'),)
 
 
 class Flight(FlightBase):
     __tablename__ = 'flights'
-    __table_args__ = (
-        UniqueConstraint('src', 'dst', 'travel_date', name='uix_src_dst_date'),
-    )
+    __table_args__ = (UniqueConstraint('src', 'dst', 'travel_date', name='uix_src_dst_date'),)
     history: Mapped[list[dict[str, int | str]]] = mapped_column(JSON, default=[], server_default='[]')
 
     def __hash__(self) -> int:
@@ -61,15 +57,13 @@ class Flight(FlightBase):
 
 
 connection_string = (
-    f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}' if DB_PORT
-    else 'sqlite+aiosqlite:///:memory:' # for pytest
+    f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+    if DB_PORT
+    else 'sqlite+aiosqlite:///:memory:'  # for pytest
 )
 
 
-async_engine = create_async_engine(
-    connection_string,
-    pool_pre_ping=True, echo=ALCHEMY_ECHO
-)
+async_engine = create_async_engine(connection_string, pool_pre_ping=True, echo=ALCHEMY_ECHO)
 ASession = async_sessionmaker(
     bind=async_engine,
     expire_on_commit=False,
@@ -78,8 +72,9 @@ ASession = async_sessionmaker(
 
 async def main():
     if DESCRIBE:
-        from sqlalchemy.sql.ddl import CreateTable
         from sqlalchemy.dialects.postgresql import dialect
+        from sqlalchemy.sql.ddl import CreateTable
+
         for table in Base.metadata.sorted_tables:
             create_table_sql = f'{(CreateTable(table).compile(dialect=dialect()))}'
             custom_logger.ingo(create_table_sql)

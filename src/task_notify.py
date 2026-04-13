@@ -1,34 +1,26 @@
 import asyncio
-import json
 from collections import defaultdict
 from decimal import Decimal
 from itertools import chain
 
+from bot.notifier import TgBotNotifier
 from cache import redis_client
 from change_detector import FlightsChangeDetector
+from client.client import Flight, FlyoneClient
 from dal import DataAccessLayer
 from fetcher import FlightsFetcher
-from client.client import FlyoneClient, Flight
-from bot.notifier import TgBotNotifier
 
 
-async def main(event: dict | None = None, context=None):
+async def main(chat_id: int | None = None, manual: bool = False):
     callee_chat_ids = None
     display_all = False
-    manual = False
 
-    if event is not None and (body := event.get('body')):
-        body = json.loads(body)
-        chat_id = body.get('chat_id')
-        manual = body.get('manual', False)
+    if chat_id is not None:
+        callee_chat_ids = [chat_id]
+        chat = await DataAccessLayer.get_chat(tg_id=chat_id)
 
-        if chat_id is not None:
-            callee_chat_ids = [chat_id]
-            chat = await DataAccessLayer.get_chat(tg_id=chat_id)
-
-            if chat:
-                display_all = not chat.less
-
+        if chat:
+            display_all = not chat.less
 
     fc = FlyoneClient()
     airport_by_code = await fc.airport_by_code
@@ -38,10 +30,8 @@ async def main(event: dict | None = None, context=None):
     to_fetch = []
 
     async with redis_client() as cache:
-
         for chat, directions in directions_by_chats.items():
             for direction in directions:
-
                 msg_header = await TgBotNotifier.form_direction_info(direction, airport_by_code)
 
                 notifier = TgBotNotifier(
@@ -66,7 +56,6 @@ async def main(event: dict | None = None, context=None):
     changed_flights: set[Flight] = set(await FlightsChangeDetector.get_changed_flights(fetched_flights, manual))
 
     for result in results:
-
         forwards, backwards, notifier = result
 
         flights = chain(forwards, backwards)
@@ -74,16 +63,9 @@ async def main(event: dict | None = None, context=None):
         flights = (flight for flight in flights if notifier.price_limit is None or flight.price <= notifier.price_limit)
 
         if display_all or any(flight in changed_flights for flight in flights):
+            forward_msg, backward_msg = await asyncio.gather(notifier.form_msg(forwards), notifier.form_msg(backwards))
 
-            forward_msg, backward_msg = await asyncio.gather(
-                notifier.form_msg(forwards),
-                notifier.form_msg(backwards)
-            )
-
-            msg = (
-                f'Forward flights 🛫:\n{forward_msg}\n\n'
-                f'Backward flights 🛬:\n{backward_msg}'
-            ).replace('EUR', '€')
+            msg = (f'Forward flights 🛫:\n{forward_msg}\n\nBackward flights 🛬:\n{backward_msg}').replace('EUR', '€')
 
             msgs_by_notifier[notifier].append(msg)
 

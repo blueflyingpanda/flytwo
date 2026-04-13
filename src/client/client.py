@@ -4,9 +4,9 @@ from enum import Enum
 from typing import Any
 
 import aiohttp
-from pydantic import TypeAdapter, BaseModel
+from pydantic import BaseModel, TypeAdapter
 
-from .currency import CURRENCY_SYMBOLS
+from client.currency import CURRENCY_SYMBOLS
 
 
 class Direction(Enum):
@@ -37,9 +37,9 @@ class Flight(BaseModel):
         if isinstance(other, db.Flight):
             # to get right associated stored in db flight in FlightsChangeDetector
             return (
-                    self.from_airport.code == other.src
-                    and self.to_airport.code == other.dst
-                    and self.travel_date == f'{other.travel_date:%-d.%-m.%Y}'
+                self.from_airport.code == other.src
+                and self.to_airport.code == other.dst
+                and self.travel_date == f'{other.travel_date:%-d.%-m.%Y}'
             )
 
         return super().__eq__(other)
@@ -57,7 +57,6 @@ class FlyoneException(Exception):
 
 
 class FlyoneClient:
-
     view_url = 'https://bookings.flyone.eu/FareView'
     api_url = 'https://api2.flyone.eu/api'
     ssl = False
@@ -92,13 +91,13 @@ class FlyoneClient:
                     else:
                         raise FlyoneException(f'{response.status}: {await response.text()}')
 
-                response_data = (await response.json())
+                response_data = await response.json()
 
                 result = response_data['result']
 
                 if not result['isSuccess']:
                     msgs = result['msgs']
-                    raise FlyoneException('\n'.join(( f'{msg["code"]}: {msg["msgText"]}' for msg in msgs)))
+                    raise FlyoneException('\n'.join((f'{msg["code"]}: {msg["msgText"]}' for msg in msgs)))
 
                 return response_data
 
@@ -125,10 +124,16 @@ class FlyoneClient:
         return await self.request('search/get-route-fare', payload)
 
     async def get_flights(
-            self,
-            *,
-            dep: str, arr: str, dep_date: str, arr_date: str,
-            currency: str = '', before: int = 10, after: int = 10, passengers: int = 1
+        self,
+        *,
+        dep: str,
+        arr: str,
+        dep_date: str,
+        arr_date: str,
+        currency: str = '',
+        before: int = 10,
+        after: int = 10,
+        passengers: int = 1,
     ) -> tuple[list[Flight], list[Flight]]:
         """before/after window must not exceed 20 days"""
         payload = {
@@ -141,21 +146,15 @@ class FlyoneClient:
                             'depCity': dep,
                             'arrCity': arr,
                             'travelDate': dep_date,
-                            'schedule': {
-                                'before': before,
-                                'after': after
-                            }
+                            'schedule': {'before': before, 'after': after},
                         },
                         {
                             'depCity': arr,
                             'arrCity': dep,
                             'travelDate': arr_date,
-                            'schedule': {
-                                'before': before,
-                                'after': after
-                            }
-                        }
-                    ]
+                            'schedule': {'before': before, 'after': after},
+                        },
+                    ],
                 },
                 'paxInfo': [{'paxKey': f'Adult{n}', 'paxType': 1} for n in range(1, passengers + 1)],
             },
@@ -186,9 +185,10 @@ class FlyoneClient:
                             to_airport=dep_airport if is_back else arr_airport,
                             travel_date=f'{day["date"]}.{month_num}.{year}',
                             currency=currency,
-                            price=Decimal(day["price"])
+                            price=Decimal(day['price']),
                         )
-                        for day in month['days'] if day['isFlightAvailable'] and not day['isSoldOut']
+                        for day in month['days']
+                        if day['isFlightAvailable'] and not day['isSoldOut']
                     ]
                 )
 

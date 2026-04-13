@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from datetime import date
 from typing import Annotated
 
-from fastapi import FastAPI, Depends
+from aiogram import types
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -10,14 +11,16 @@ from fastapi_cache.decorator import cache
 
 from api import auth
 from api.auth import User
-from api.cache_utils import price_history_key_builder, airports_key_builder
-from api.models import UserDirection, Ping
+from api.cache_utils import airports_key_builder, price_history_key_builder
+from api.models import NotifyRequest, Ping, UserDirection
+from bot.bot import bot, dp
 from cache import redis_client
-from client.client import FlyoneClient, Airport
-from conf import CORS_ORIGINS
+from client.client import Airport, FlyoneClient
+from conf import BOT_SECRET, CORS_ORIGINS
 from dal import DataAccessLayer
 from logs import custom_logger
 from plotter import PriceHistory
+from task_notify import main as notify_main
 
 
 @asynccontextmanager
@@ -37,8 +40,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
 app.include_router(auth.router)
@@ -80,3 +83,21 @@ async def airports() -> list[Airport]:
     custom_logger.info('Fetching airports')
     airport_by_code = await fc.airport_by_code
     return list(airport_by_code.values())
+
+
+@app.post('/webhook', include_in_schema=False)
+async def webhook(request: Request) -> None:
+    body = await request.json()
+    update = types.Update(**body)
+    await dp.feed_update(bot, update)
+
+
+@app.post('/notify', status_code=status.HTTP_202_ACCEPTED, include_in_schema=False)
+async def notify(
+    request: NotifyRequest,
+    background_tasks: BackgroundTasks,
+    x_notify_secret: Annotated[str, Header()],
+) -> None:
+    if x_notify_secret != BOT_SECRET:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid secret')
+    background_tasks.add_task(notify_main, chat_id=request.chat_id, manual=request.manual)

@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Any
+from typing import Any, AsyncGenerator
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from conf import REDIS_HOST, REDIS_PORT, REDIS_PASS, YC_CERT
+from conf import REDIS_HOST, REDIS_PASS, REDIS_PORT
 from logs import custom_logger
 
 
@@ -14,8 +14,6 @@ async def redis_client() -> AsyncGenerator[Redis, Any]:
         host=REDIS_HOST,
         port=REDIS_PORT,
         password=REDIS_PASS,
-        ssl=True,
-        ssl_ca_certs=YC_CERT,
     )
     try:
         await cache.ping()

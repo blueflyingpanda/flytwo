@@ -3,16 +3,16 @@ Flyone client to get the cheapest flights
 
 # Usage
 
-python3.11 or higher is required
+python3.13 or higher is required
 
-`pip install -e .`
+`uv tool install -e .`
 
 `flytwo flights --origin RMO --destination EVN --currency EUR --travel_date 2024-12-01`
 
 # For devs
 
 ### Install dependencies
-`pip install -r requirements.txt`
+`uv sync --dev`
 
 ### Configure environment (preferably use .env file)
 

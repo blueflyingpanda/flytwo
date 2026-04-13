@@ -1,10 +1,15 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Ping(BaseModel):
     ping: str
+
+
+class NotifyRequest(BaseModel):
+    chat_id: int | None = None
+    manual: bool = False
 
 
 class User(BaseModel):
@@ -17,8 +22,9 @@ class UserDirection(BaseModel):
     travel_date: date
     price: int
 
-    class Config:
-        from_attributes = True  # allows UserDirection.model_validate() on db.Direction instance from SqlAlchemy
+    model_config = ConfigDict(
+        from_attributes=True
+    )  # allows UserDirection.model_validate() on db.Direction instance from SqlAlchemy
 
 
 class JwtPayload(BaseModel):

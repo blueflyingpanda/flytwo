@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from io import BytesIO
+
 import matplotlib.pyplot as plt
 import numpy as np
 from pydantic import BaseModel, RootModel
@@ -23,10 +24,21 @@ class Plotter:
     async def plot_price_history(src: str, dst: str, price_history: dict[date, list[PricePoint]]) -> BytesIO:
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        offset = .3  # otherwise graph lines might overlap
+        offset = 0.3  # otherwise graph lines might overlap
 
         # Seaborn Tab10 colors. Avoiding seaborn for minimal dependencies
-        colors = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
+        colors = [
+            '#1F77B4',
+            '#FF7F0E',
+            '#2CA02C',
+            '#D62728',
+            '#9467BD',
+            '#8C564B',
+            '#E377C2',
+            '#7F7F7F',
+            '#BCBD22',
+            '#17BECF',
+        ]
 
         all_tracking_dates = set()
 
@@ -52,9 +64,9 @@ class Plotter:
 
             y_prices = []
             last_known_price = None
-            for date in x_dates:
-                if date in daily_prices:
-                    last_known_price = daily_prices[date]
+            for dt in x_dates:
+                if dt in daily_prices:
+                    last_known_price = daily_prices[dt]
                     y_prices.append(last_known_price + (i * offset))  # Small offset to prevent overlap
                 elif last_known_price is not None:
                     y_prices.append(last_known_price + (i * offset))  # Maintain offset for gaps
@@ -67,18 +79,18 @@ class Plotter:
             y_valid = np.array([y_prices[j] for j in valid_indices])
 
             if len(x_valid) > 1:  # Ensure enough points for plotting
-                ax.plot(x_valid, y_valid, color=colors[i % len(colors)], linewidth=2, label=f"{flight_date}")
+                ax.plot(x_valid, y_valid, color=colors[i % len(colors)], linewidth=2, label=f'{flight_date}')
 
             # Add markers at actual data points
-            ax.scatter(x_valid, y_valid, color=colors[i % len(colors)], s=50, marker="o", edgecolors='black')
+            ax.scatter(x_valid, y_valid, color=colors[i % len(colors)], s=50, marker='o', edgecolors='black')
 
         ax.set_title(f'Price History for {src} → {dst}')
         ax.set_xlabel('Tracking Date')
         ax.set_ylabel('Price')
         ax.legend(title='Flight Dates')
         ax.grid(True, linestyle='--', alpha=0.5)
-        ax.set_xticks(x_ticks[::max(1, len(x_ticks) // 10)])  # Limit tick labels for readability
-        ax.set_xticklabels([d.strftime('%Y-%m-%d') for d in x_dates[::max(1, len(x_ticks) // 10)]], rotation=45)
+        ax.set_xticks(x_ticks[:: max(1, len(x_ticks) // 10)])  # Limit tick labels for readability
+        ax.set_xticklabels([d.strftime('%Y-%m-%d') for d in x_dates[:: max(1, len(x_ticks) // 10)]], rotation=45)
 
         # Save plot to PNG buffer
         png_buffer = BytesIO()

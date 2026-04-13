@@ -5,8 +5,8 @@ from decimal import Decimal
 import aiohttp
 from pycountry import countries
 
-from conf import BOT_TOKEN
 from client.client import Flight
+from conf import BOT_TOKEN
 from logs import custom_logger
 
 if False:
@@ -14,7 +14,6 @@ if False:
 
 
 class TgBotNotifier:
-
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
     max_msg_len = 4096
 
@@ -66,7 +65,8 @@ class TgBotNotifier:
                     arrow = '⬇️'
                     diff = -diff
 
-                msg = f'{msg} {arrow}{str(diff).rjust(3)}{flight.currency_symbol} (was {prev_price.rjust(3)}{flight.currency_symbol})'
+                diff_str = f'{arrow}{str(diff).rjust(3)}{flight.currency_symbol}'
+                msg = f'{msg} {diff_str} (was {prev_price.rjust(3)}{flight.currency_symbol})'
 
             msgs.append(msg)
 
@@ -84,7 +84,11 @@ class TgBotNotifier:
             to_send = []
 
             for msg in msgs:
-                payload = {'text': f'<pre>{self.msg_header}\n\n{msg}</pre>', 'chat_id': self.chat_id, 'parse_mode': 'HTML'}
+                payload = {
+                    'text': f'<pre>{self.msg_header}\n\n{msg}</pre>',
+                    'chat_id': self.chat_id,
+                    'parse_mode': 'HTML',
+                }
                 to_send.append(slow_send(payload))
 
             await asyncio.gather(*to_send)

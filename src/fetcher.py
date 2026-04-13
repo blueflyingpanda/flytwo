@@ -5,15 +5,14 @@ from pydantic_core import to_jsonable_python
 from redis.asyncio import Redis
 
 import db
+from bot.notifier import TgBotNotifier
+from client.client import FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient, FlyoneException
 from conf import REDIS_TTL
 from dal import DataAccessLayer
-from client.client import FlyoneException, FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient
 from logs import custom_logger
-from bot.notifier import TgBotNotifier
 
 
 class FlightsFetcher:
-
     @staticmethod
     async def fetch_flights(
         direction: db.Direction, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
@@ -36,11 +35,7 @@ class FlightsFetcher:
                 custom_logger.info('Fetching data from flyone: %s -> %s', src, dst)
 
                 forward, backward = await fc.get_flights(
-                    dep=src,
-                    arr=dst,
-                    dep_date=travel_date,
-                    arr_date=travel_date,
-                    currency='EUR'
+                    dep=src, arr=dst, dep_date=travel_date, arr_date=travel_date, currency='EUR'
                 )
             except FlyoneException as e:
                 err_msg = f'{e}'
@@ -51,7 +46,7 @@ class FlightsFetcher:
             if REDIS_TTL is not None:
                 await asyncio.gather(
                     cache.set(forward_key, json.dumps(forward, default=to_jsonable_python), ex=REDIS_TTL),
-                    cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL)
+                    cache.set(backward_key, json.dumps(backward, default=to_jsonable_python), ex=REDIS_TTL),
                 )
 
         else:

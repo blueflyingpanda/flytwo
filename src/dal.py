@@ -1,28 +1,24 @@
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any, Type
 
-from sqlalchemy import select, RowMapping, Row, update, case, delete, and_, or_
+from sqlalchemy import Row, RowMapping, and_, case, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from db import Chat, ASession, Direction, Flight, FlightBase
 from client.client import Flight as FetchedFlight
+from db import ASession, Chat, Direction, Flight, FlightBase
 from logs import custom_logger
 from plotter import PricePoint
 
 
 class DBUtils:
-
     @staticmethod
-    async def upsert(
-            model, defaults: dict[str, Any] | None = None, **kwargs
-    ) -> tuple[Row | RowMapping, bool]:
+    async def upsert(model, defaults: dict[str, Any] | None = None, **kwargs) -> tuple[Row | RowMapping, bool]:
 
         defaults = defaults or {}
 
         async with ASession() as session:
-
             stmt = select(model).filter_by(**kwargs)
             result = await session.execute(stmt)
             instance = result.scalars().first()
@@ -62,7 +58,6 @@ class DBUtils:
 
 
 class DataAccessLayer:
-
     @staticmethod
     async def get_chat(tg_id: int) -> Chat | None:
         async with ASession() as session:
@@ -83,9 +78,7 @@ class DataAccessLayer:
     @staticmethod
     async def create_direction(chat_id: int, src: str, dst: str, price: int, travel_date: date) -> [Direction, bool]:
         return await DBUtils.upsert(
-            Direction,
-            chat_id=chat_id, src=src, dst=dst,
-            defaults={'travel_date': travel_date, 'price': price}
+            Direction, chat_id=chat_id, src=src, dst=dst, defaults={'travel_date': travel_date, 'price': price}
         )
 
     @staticmethod
@@ -100,7 +93,7 @@ class DataAccessLayer:
             stmt = (
                 update(Chat)
                 .filter_by(tg_id=tg_id)
-                .values(**{field_name: case((field == True, False), else_=True)})
+                .values(**{field_name: case((field, False), else_=True)})
                 .returning(field)
             )
             result = await session.execute(stmt)
@@ -125,7 +118,7 @@ class DataAccessLayer:
             if chat_ids is not None:
                 stmt = stmt.where(Chat.tg_id.in_(chat_ids))
             else:
-                stmt = stmt.where(Chat.schedule == True)
+                stmt = stmt.where(Chat.schedule)
 
             result = await session.execute(stmt)
             chats = result.scalars().all()
@@ -153,7 +146,7 @@ class DataAccessLayer:
                 and_(
                     Flight.src == flight.from_airport.code,
                     Flight.dst == flight.to_airport.code,
-                    Flight.travel_date == datetime.strptime(flight.travel_date, '%d.%m.%Y').date()
+                    Flight.travel_date == datetime.strptime(flight.travel_date, '%d.%m.%Y').date(),
                 )
                 for flight in fetched_flights
             ]
@@ -173,7 +166,7 @@ class DataAccessLayer:
                     'src': fetched_flight.from_airport.code,
                     'dst': fetched_flight.to_airport.code,
                     'travel_date': datetime.strptime(fetched_flight.travel_date, '%d.%m.%Y').date(),
-                    'price': 0  # in order to detect flights in FlightsChangeDetector
+                    'price': 0,  # in order to detect flights in FlightsChangeDetector
                 }
                 for fetched_flight in fetched_flights
             ]
@@ -194,9 +187,7 @@ class DataAccessLayer:
         async with ASession() as session:
             flight_ids = [item['id'] for item in updated_price_by_flight]
 
-            result = await session.execute(
-                select(Flight).where(Flight.id.in_(flight_ids))
-            )
+            result = await session.execute(select(Flight).where(Flight.id.in_(flight_ids)))
             flights = {flight.id: flight for flight in result.scalars().all()}
 
             for flight_data in updated_price_by_flight:

@@ -6,7 +6,9 @@ load_dotenv()
 
 BOT_TOKEN = environ.get('BOT_TOKEN')
 
-CLOUD_FUNC_URL = environ.get('CLOUD_FUNC_URL')
+API_URL = environ.get('API_URL')
+BOT_SECRET = environ.get('BOT_SECRET')
+TG_SECRET = environ.get('TG_SECRET')
 
 DB_USER = environ.get('DB_USER')
 DB_PASS = environ.get('DB_PASS')
@@ -21,8 +23,6 @@ REDIS_TTL = environ.get('REDIS_TTL')
 
 if REDIS_TTL is not None:
     REDIS_TTL = int(REDIS_TTL)
-
-YC_CERT = environ.get('YC_CERT')
 
 JWT_SECRET = environ.get('JWT_SECRET')
 JWT_ACCESS_TOKEN_EXPIRE = environ.get('JWT_ACCESS_TOKEN_EXPIRE')

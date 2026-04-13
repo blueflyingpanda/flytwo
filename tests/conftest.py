@@ -1,7 +1,7 @@
 import pytest
 from fakeredis import FakeAsyncRedis
 
-from db import Base, async_engine, ASession
+from db import ASession, Base, async_engine
 
 
 @pytest.fixture(autouse=True)
@@ -25,12 +25,14 @@ async def setup_test_db():
 
 @pytest.fixture
 async def session():
-        async with ASession() as session:
-            yield session
+    async with ASession() as session:
+        yield session
+
 
 @pytest.fixture
 def redis_fake():
     return FakeAsyncRedis()
+
 
 @pytest.fixture
 def redis_mock(monkeypatch, redis_fake):

@@ -5,15 +5,11 @@ BUILD_DIR := yc_build
 BUILD_ARC := yc_build.zip
 
 api:
-	docker build -t flytwo-api -f Dockerfile .
-	docker tag flytwo-api cr.yandex/${DOCKER_REGISTRY_ID}/flytwo-api:latest
-	docker push cr.yandex/${DOCKER_REGISTRY_ID}/flytwo-api:latest
+	docker build -t flytwo-api -f Dockerfile.api .
 
 build:
 	mkdir -p $(BUILD_DIR)
 	rsync -a --exclude='__pycache__/' --exclude='flytwo.egg-info/' $(SRC_DIR)/ $(BUILD_DIR)
-	cp requirements.txt $(BUILD_DIR)
-	cp YandexInternalRootCA.crt $(BUILD_DIR)
 	cd $(BUILD_DIR) && zip -r ../$(BUILD_ARC) *
 	rm -rf $(BUILD_DIR)
 
@@ -29,13 +25,13 @@ migrate:
 	alembic upgrade head
 
 set_hook:
-	curl --request POST --url https://api.telegram.org/bot${BOT_TOKEN}/setWebhook --header 'content-type: application/json' --data '{"url": "${CLOUD_FUNC_BOT_HOOK_URL}"}'
+	curl --request POST --url https://api.telegram.org/bot${BOT_TOKEN}/setWebhook --header 'content-type: application/json' --data '{"url": "${API_URL}/webhook", "secret_token": "${TELEGRAM_SECRET}"}'
 
 delete_hook:
 	curl --request POST --url 'https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook'
 
 test:
-	python -m pytest -n 1 tests
+	uv run pytest -n 1 tests
 
 # This is a phony target, meaning it doesn't represent a file
 .PHONY: api build clean migration migrate set_hook delete_hook test

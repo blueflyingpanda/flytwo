@@ -1,10 +1,10 @@
 import asyncio
 
 from dal import DataAccessLayer
-from db import Flight, Direction
+from db import Direction, Flight
 
 
-async def main(event: dict | None = None, context=None):
+async def main():
     await DataAccessLayer.cleanup_outdated(Flight)
     await DataAccessLayer.cleanup_outdated(Direction)
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from api.models import JwtPayload, User, Token
+from api.models import JwtPayload, Token, User
 from cache import redis_client
 from conf import JWT_ACCESS_TOKEN_EXPIRE, JWT_SECRET
 from dal import DataAccessLayer
@@ -15,6 +15,7 @@ JWT_ALGORITHM = 'HS256'
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
+
 
 async def get_current_user(access_token: str = Depends(oauth2_scheme)) -> User:
     data = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])

@@ -61,21 +61,23 @@ Run notification task (backend) `python task_notify.py`
 docker compose -f docker-compose.yml up -d
 ```
 
-#### Shared (reuses existing postgres and redis from another compose project)
+#### Shared (reuses existing postgres, redis, and nginx from another compose project)
+
+Nginx from the other project handles SSL and proxying — add a `server` block for `flytwo.servebeer.com`
+pointing to `http://api:8080` in its config, then reload it.
 
 First time only — create the shared network and attach existing services to it:
 ```
 docker network create shared
 docker network connect shared <postgres-container-name>
 docker network connect shared <redis-container-name>
+docker network connect shared <nginx-container-name>
 ```
 
-Set `DB_HOST` and `REDIS_HOST` in `.env` to the container names above, then:
+Set `DB_HOST` and `REDIS_HOST` in `.env` to the postgres and redis container names above, then:
 ```
 docker compose -f compose-shared.yml up -d
 ```
-
-Replace `<domain>` in `nginx.flytwo.conf` with your domain before starting.
 
 ### Guidelines
 

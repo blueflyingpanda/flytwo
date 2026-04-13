@@ -35,7 +35,7 @@ services:
     environment:
       DB_HOST: postgres
       REDIS_HOST: redis
-    ports:
+    expose:
       - "8080"
     depends_on:
       postgres:

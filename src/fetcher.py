@@ -41,7 +41,7 @@ class FlightsFetcher:
                 err_msg = f'{e}'
                 logger.error(err_msg)
                 await notifier.send_err(err_msg)
-                return
+                return None
 
             if REDIS_TTL is not None:
                 await asyncio.gather(

@@ -25,7 +25,7 @@ migrate:
 	alembic upgrade head
 
 set_hook:
-	curl --request POST --url https://api.telegram.org/bot${BOT_TOKEN}/setWebhook --header 'content-type: application/json' --data '{"url": "${API_URL}/webhook", "secret_token": "${TELEGRAM_SECRET}"}'
+	curl --request POST --url https://api.telegram.org/bot${BOT_TOKEN}/setWebhook --header 'content-type: application/json' --data '{"url": "${API_URL}/webhook", "secret_token": "${TG_SECRET}"}'
 
 delete_hook:
 	curl --request POST --url 'https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook'

@@ -49,6 +49,9 @@ async def cmd_help(message: types.Message):
         'Usage: /stats <src> <dst> OR /stats <src> <dst> <date>\n\n'
         '/auth - returns chat id and one-time code for authorization in API.\n'
         'Usage: Just type /auth\n\n'
+        '/notify <src> <dst> [+|-] - Set notification preference for a direction.\n'
+        'Example: /notify RMO EVN -\n'
+        'Note: + for price increase only, - for price decrease only, omit for any change.\n\n'
     )
     await message.reply(help_text)
 
@@ -184,7 +187,8 @@ async def cmd_go(message: types.Message):
             headers={'x-notify-secret': BOT_SECRET},
         ),
     ):
-        await message.reply('Manual launch finished!')
+        ...
+    await message.reply('Manual launch finished!')
 
 
 @router.message(Command(commands=['schedule']))
@@ -307,6 +311,57 @@ async def cmd_stats(message: types.Message):
     on_dt = f'on {dt.strftime(dt_fmt)}' if dt else ''
 
     await message.answer_photo(photo=chart_image, caption=f'Price History for {src} → {dst} {on_dt}'.strip())
+
+
+@router.message(Command(commands=['notify']))
+async def cmd_notify(message: types.Message):
+    command_parts = message.text.split()
+
+    if len(command_parts) not in (3, 4):
+        await message.reply('Usage: /notify <src> <dst> [+|-]')
+        return
+
+    notify_on_decrease: bool | None = None
+
+    if len(command_parts) == 4:
+        _, src, dst, symbol = command_parts
+        if symbol == '+':
+            notify_on_decrease = False
+        elif symbol == '-':
+            notify_on_decrease = True
+        else:
+            await message.reply('Invalid symbol. Use + for increase, - for decrease, or omit for any change.')
+            return
+    else:
+        _, src, dst = command_parts
+
+    src = src.upper()
+    dst = dst.upper()
+
+    if src == dst:
+        await message.reply('Source cannot be the same as destination.')
+        return
+
+    if any(filter(lambda elem: len(elem) != 3, (src, dst))):
+        await message.reply('Invalid airport code! Should be 3 letters.')
+        return
+
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
+
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
+
+    updated = await DataAccessLayer.set_notify_on_decrease(
+        chat_id=chat.id, src=src, dst=dst, notify_on_decrease=notify_on_decrease
+    )
+
+    if not updated:
+        await message.reply('Direction not found. Add it first with /add')
+        return
+
+    labels = {None: 'any change', False: 'price increase only', True: 'price decrease only'}
+    await message.reply(f'Notification preference updated: {labels[notify_on_decrease]}')
 
 
 dp.include_router(router)

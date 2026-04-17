@@ -41,6 +41,7 @@ class Direction(FlightBase):
     __tablename__ = 'directions'
 
     chat_id: Mapped[int] = mapped_column(ForeignKey('chats.id'))
+    notify_on_decrease: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
 
     chat: Mapped['Chat'] = relationship(back_populates='directions')
 

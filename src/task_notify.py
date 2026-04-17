@@ -35,7 +35,10 @@ async def main(chat_id: int | None = None, manual: bool = False):
                 msg_header = await TgBotNotifier.form_direction_info(direction, airport_by_code)
 
                 notifier = TgBotNotifier(
-                    chat_id=chat.tg_id, price_limit=Decimal(direction.price), msg_header=msg_header
+                    chat_id=chat.tg_id,
+                    price_limit=Decimal(direction.price),
+                    msg_header=msg_header,
+                    notify_on_decrease=direction.notify_on_decrease,
                 )
 
                 to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, fc))
@@ -60,9 +63,16 @@ async def main(chat_id: int | None = None, manual: bool = False):
 
         flights = chain(forwards, backwards)
 
-        flights = (flight for flight in flights if notifier.price_limit is None or flight.price <= notifier.price_limit)
+        flights = [flight for flight in flights if notifier.price_limit is None or flight.price <= notifier.price_limit]
 
-        if display_all or any(flight in changed_flights for flight in flights):
+        if display_all or any(
+            flight in changed_flights
+            and (
+                notifier.notify_on_decrease is None
+                or (flight.prev_price is not None and (flight.price < flight.prev_price) == notifier.notify_on_decrease)
+            )
+            for flight in flights
+        ):
             forward_msg, backward_msg = await asyncio.gather(notifier.form_msg(forwards), notifier.form_msg(backwards))
 
             msg = (f'Forward flights 🛫:\n{forward_msg}\n\nBackward flights 🛬:\n{backward_msg}').replace('EUR', '€')

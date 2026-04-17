@@ -86,6 +86,19 @@ class DataAccessLayer:
         return await DBUtils.delete(Direction, chat_id=chat_id, src=src, dst=dst)
 
     @staticmethod
+    async def set_threshold(chat_id: int, src: str, dst: str, threshold: int) -> bool:
+        async with ASession() as session:
+            stmt = (
+                update(Direction)
+                .where(Direction.chat_id == chat_id, Direction.src == src, Direction.dst == dst)
+                .values(threshold=threshold)
+                .returning(Direction.id)
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.scalar_one_or_none() is not None
+
+    @staticmethod
     async def set_notify_on_decrease(chat_id: int, src: str, dst: str, notify_on_decrease: bool | None) -> bool:
         async with ASession() as session:
             stmt = (

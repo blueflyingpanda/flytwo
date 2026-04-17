@@ -23,11 +23,13 @@ class TgBotNotifier:
         price_limit: Decimal | None = None,
         msg_header: str = '',
         notify_on_decrease: bool | None = None,
+        threshold: int = 0,
     ):
         self.chat_id = chat_id
         self.price_limit = price_limit
         self.msg_header = msg_header
         self.notify_on_decrease = notify_on_decrease
+        self.threshold = threshold
 
     def __hash__(self) -> int:
         return hash(self.chat_id)

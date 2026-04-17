@@ -39,6 +39,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
                     price_limit=Decimal(direction.price),
                     msg_header=msg_header,
                     notify_on_decrease=direction.notify_on_decrease,
+                    threshold=direction.threshold,
                 )
 
                 to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, fc))
@@ -67,9 +68,9 @@ async def main(chat_id: int | None = None, manual: bool = False):
 
         if display_all or any(
             flight in changed_flights
+            and abs(flight.price - flight.prev_price) >= notifier.threshold
             and (
-                notifier.notify_on_decrease is None
-                or (flight.prev_price is not None and (flight.price < flight.prev_price) == notifier.notify_on_decrease)
+                notifier.notify_on_decrease is None or (flight.price < flight.prev_price) == notifier.notify_on_decrease
             )
             for flight in flights
         ):

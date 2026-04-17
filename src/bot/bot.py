@@ -52,6 +52,9 @@ async def cmd_help(message: types.Message):
         '/notify <src> <dst> [+|-] - Set notification preference for a direction.\n'
         'Example: /notify RMO EVN -\n'
         'Note: + for price increase only, - for price decrease only, omit for any change.\n\n'
+        '/threshold <src> <dst> <value> - Set minimum price change to trigger a notification.\n'
+        'Example: /threshold RMO EVN 20\n'
+        'Note: value must be a non-negative whole number of EUR. Default is 0 (notify on any change).\n\n'
     )
     await message.reply(help_text)
 
@@ -362,6 +365,50 @@ async def cmd_notify(message: types.Message):
 
     labels = {None: 'any change', False: 'price increase only', True: 'price decrease only'}
     await message.reply(f'Notification preference updated: {labels[notify_on_decrease]}')
+
+
+@router.message(Command(commands=['threshold']))
+async def cmd_threshold(message: types.Message):
+    command_parts = message.text.split()
+
+    if len(command_parts) != 4:
+        await message.reply('Usage: /threshold <src> <dst> <value>')
+        return
+
+    _, src, dst, value_str = command_parts
+
+    src = src.upper()
+    dst = dst.upper()
+
+    if src == dst:
+        await message.reply('Source cannot be the same as destination.')
+        return
+
+    if any(filter(lambda elem: len(elem) != 3, (src, dst))):
+        await message.reply('Invalid airport code! Should be 3 letters.')
+        return
+
+    try:
+        threshold = int(value_str)
+        if threshold < 0:
+            raise ValueError
+    except ValueError:
+        await message.reply('Invalid value. Please provide a non-negative whole number.')
+        return
+
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
+
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
+
+    updated = await DataAccessLayer.set_threshold(chat_id=chat.id, src=src, dst=dst, threshold=threshold)
+
+    if not updated:
+        await message.reply('Direction not found. Add it first with /add')
+        return
+
+    await message.reply(f'Threshold updated: {threshold} EUR')
 
 
 dp.include_router(router)

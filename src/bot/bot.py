@@ -8,7 +8,7 @@ from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 
 from bot.notifier import TgBotNotifier
-from bot.parser import UrlParser
+from bot.parser import ScheduleParser, UrlParser
 from cache import redis_client
 from client.client import FlyoneClient
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
@@ -36,9 +36,13 @@ async def cmd_help(message: types.Message):
         'Note: src and dst should be 3-letter airport codes.\n\n'
         '/go - Manually launch the bot.\n'
         'Usage: Just type /go\n\n'
-        '/schedule - Toggles scheduling setting for the chat. If ON, triggers the bot by schedule to check prices of '
-        'selected flights\n'
-        'Usage: Just type /schedule\n\n'
+        '/schedule [pattern] - Toggle scheduling on/off, or set a check frequency.\n'
+        'Usage: /schedule to toggle, or with a pattern:\n'
+        '  1h            every hour (default)\n'
+        '  Nh            every N hours\n'
+        '  6pm           daily at 6pm\n'
+        '  8am-11pm      every hour from 8am to 11pm\n'
+        '  8am-11pm 2h   every 2 hours from 8am to 11pm\n\n'
         '/less - Toggles silence mode for the chat. If ON, messages will be sent only on changes.\n'
         'Usage: Just type /less\n\n'
         '/airports - lists all available airports by their codes.\n'
@@ -196,13 +200,38 @@ async def cmd_go(message: types.Message):
 
 @router.message(Command(commands=['schedule']))
 async def cmd_schedule(message: types.Message):
-    schedule = await DataAccessLayer.toggle_schedule(tg_id=message.chat.id)
+    command_parts = message.text.split(maxsplit=1)
 
-    if schedule is None:
+    if len(command_parts) == 1:
+        schedule = await DataAccessLayer.toggle_schedule(tg_id=message.chat.id)
+
+        if schedule is None:
+            await message.reply('Bot was not started yet!')
+            return
+
+        await message.reply(f'Schedule: {"ON" if schedule else "OFF"}')
+        return
+
+    rrule = ScheduleParser.parse(command_parts[1])
+
+    if rrule is None:
+        await message.reply(
+            'Invalid format. Examples:\n'
+            '  1h          every hour\n'
+            '  4h          every 4 hours\n'
+            '  6pm         daily at 6pm\n'
+            '  8am-11pm    every hour from 8am to 11pm\n'
+            '  8am-11pm 2h every 2 hours from 8am to 11pm'
+        )
+        return
+
+    updated = await DataAccessLayer.set_schedule_rrule(tg_id=message.chat.id, rrule=rrule)
+
+    if not updated:
         await message.reply('Bot was not started yet!')
         return
 
-    await message.reply(f'Schedule: {"ON" if schedule else "OFF"}')
+    await message.reply(f'Schedule enabled: {command_parts[1].strip()}')
 
 
 @router.message(Command(commands=['less']))

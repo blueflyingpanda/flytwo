@@ -132,6 +132,21 @@ class DataAccessLayer:
         return await DataAccessLayer._toggle(tg_id, 'schedule')
 
     @staticmethod
+    async def set_schedule_rrule(tg_id: int, rrule: str) -> bool:
+        async with ASession() as session:
+            stmt = update(Chat).filter_by(tg_id=tg_id).values(rrule=rrule, schedule=True).returning(Chat.id)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def update_last_notified(tg_ids: list[int]) -> None:
+        async with ASession() as session:
+            stmt = update(Chat).where(Chat.tg_id.in_(tg_ids)).values(last_notified=datetime.now(UTC))
+            await session.execute(stmt)
+            await session.commit()
+
+    @staticmethod
     async def toggle_less(tg_id: int) -> bool | None:
         return await DataAccessLayer._toggle(tg_id, 'less')
 

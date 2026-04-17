@@ -19,6 +19,7 @@ dependencies = [
     "python-json-logger",
     "pycountry",
     "matplotlib",
+    "python-dateutil",
 ]
 
 [project.optional-dependencies]

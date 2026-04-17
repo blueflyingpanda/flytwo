@@ -1,7 +1,7 @@
 import asyncio
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import JSON, BigInteger, Boolean, ForeignKey, String, UniqueConstraint, text
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, String, UniqueConstraint, text
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -10,6 +10,8 @@ from logs import logger
 
 ALCHEMY_ECHO = False
 DESCRIBE = False
+
+DEFAULT_RRULE = 'FREQ=HOURLY;INTERVAL=1'
 
 
 class Base(DeclarativeBase, AsyncAttrs):
@@ -23,6 +25,8 @@ class Chat(Base):
     tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     schedule: Mapped[bool] = mapped_column(Boolean, default=False)
     less: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text('true'))
+    rrule: Mapped[str] = mapped_column(String, default=DEFAULT_RRULE, server_default=text(f"'{DEFAULT_RRULE}'"))
+    last_notified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 

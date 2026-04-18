@@ -16,7 +16,7 @@ from api.models import NotifyRequest, Ping, UserDirection
 from bot.bot import bot, dp
 from cache import redis_client
 from client.client import Airport, FlyoneClient
-from conf import BOT_SECRET, CORS_ORIGINS
+from conf import BOT_SECRET, CORS_ORIGINS, DEBUG
 from dal import DataAccessLayer
 from logs import logger
 from plotter import PriceHistory
@@ -34,7 +34,10 @@ async def lifespan(app: FastAPI):
         raise
 
 
-app = FastAPI(lifespan=lifespan)
+docs_url = '/docs' if DEBUG else None
+redoc_url = '/redoc' if DEBUG else None
+
+app = FastAPI(lifespan=lifespan, docs_url=docs_url, redoc_url=redoc_url)
 
 app.add_middleware(
     CORSMiddleware,

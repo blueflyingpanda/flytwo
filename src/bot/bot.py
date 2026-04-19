@@ -203,7 +203,7 @@ async def cmd_schedule(message: types.Message):
             await message.reply('Bot was not started yet!')
             return
 
-        await message.reply(f'Schedule: {"ON" if schedule else "OFF"}')
+        await message.reply(f'Schedule: {schedule or "OFF"}')
         return
 
     rrule = ScheduleParser.parse(command_parts[1])
@@ -219,7 +219,7 @@ async def cmd_schedule(message: types.Message):
         )
         return
 
-    updated = await DataAccessLayer.set_schedule_rrule(tg_id=message.chat.id, rrule=rrule)
+    updated = await DataAccessLayer.set_schedule(tg_id=message.chat.id, rrule=rrule)
 
     if not updated:
         await message.reply('Bot was not started yet!')
@@ -261,7 +261,7 @@ async def cmd_info(message: types.Message):
 
     await message.reply(
         f'Chat ID: {chat.tg_id}\n'
-        f'Schedule: {chat.rrule if chat.schedule else "OFF"}\n'
+        f'Schedule: {chat.schedule or "OFF"}\n'
         f'Silent mode: {"ON" if chat.less else "OFF"}\n'
         f'Last notified: {chat.last_notified.strftime("%Y-%m-%d %H:%M:%S") if chat.last_notified else "never"}\n'
         f'Directions: {len(directions)}'

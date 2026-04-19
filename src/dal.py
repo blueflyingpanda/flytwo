@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from client.client import Flight as FetchedFlight
-from db import ASession, Chat, Direction, Flight, FlightBase
+from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase
 from logs import logger
 from plotter import PricePoint
 
@@ -128,13 +128,23 @@ class DataAccessLayer:
             return updated_value
 
     @staticmethod
-    async def toggle_schedule(tg_id: int) -> bool | None:
-        return await DataAccessLayer._toggle(tg_id, 'schedule')
+    async def toggle_schedule(tg_id: int) -> str | None:
+        async with ASession() as session:
+            stmt = (
+                update(Chat)
+                .filter_by(tg_id=tg_id)
+                .values(schedule=case((Chat.schedule != '', ''), else_=DEFAULT_RRULE))
+                .returning(Chat.schedule)
+            )
+            result = await session.execute(stmt)
+            updated_value = result.scalar_one_or_none()
+            await session.commit()
+            return updated_value
 
     @staticmethod
-    async def set_schedule_rrule(tg_id: int, rrule: str) -> bool:
+    async def set_schedule(tg_id: int, rrule: str) -> bool:
         async with ASession() as session:
-            stmt = update(Chat).filter_by(tg_id=tg_id).values(rrule=rrule, schedule=True).returning(Chat.id)
+            stmt = update(Chat).filter_by(tg_id=tg_id).values(schedule=rrule).returning(Chat.id)
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar_one_or_none() is not None
@@ -159,7 +169,7 @@ class DataAccessLayer:
             if chat_ids is not None:
                 stmt = stmt.where(Chat.tg_id.in_(chat_ids))
             else:
-                stmt = stmt.where(Chat.schedule)
+                stmt = stmt.where(Chat.schedule != '')
 
             result = await session.execute(stmt)
             chats = result.scalars().all()

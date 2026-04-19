@@ -44,7 +44,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
         directions_by_chats = {
             chat: directions
             for chat, directions in directions_by_chats.items()
-            if is_due(chat.rrule, chat.last_notified)
+            if is_due(chat.schedule, chat.last_notified)
         }
         due_tg_ids = [chat.tg_id for chat in directions_by_chats]
 

@@ -23,9 +23,8 @@ class Chat(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    schedule: Mapped[bool] = mapped_column(Boolean, default=False)
+    schedule: Mapped[str] = mapped_column(String, default=DEFAULT_RRULE, server_default=text(f"'{DEFAULT_RRULE}'"))
     less: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text('true'))
-    rrule: Mapped[str] = mapped_column(String, default=DEFAULT_RRULE, server_default=text(f"'{DEFAULT_RRULE}'"))
     last_notified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')

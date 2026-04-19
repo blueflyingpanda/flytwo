@@ -136,9 +136,16 @@ class TgBotNotifier:
         if dst_country is not None:
             dst_flag = dst_country.flag
 
+        if direction.notify_on_decrease is None:
+            notify_on = '↕️'
+        else:
+            notify_on = '⬇️' if direction.notify_on_decrease else '⬆️'
+
         return (
             f'From: {src} {src_flag}\n'
             f'To: {dst} {dst_flag}\n'
             f'Price limit: {direction.price} 💶\n'
-            f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} ✈️'
+            f'Travel date: {direction.travel_date.strftime("%d.%m.%Y")} ✈️\n'
+            f'Notify on: {notify_on}\n'
+            f'Threshold: {direction.threshold} 🪙'
         )

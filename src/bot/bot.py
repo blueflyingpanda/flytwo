@@ -24,35 +24,29 @@ router = Router()
 async def cmd_help(message: types.Message):
     help_text = (
         'Here are the available commands:\n\n'
-        '/start - Start the bot.\n'
-        'Usage: Just type /start\n\n'
-        '/stop - Stop the bot.\n'
-        'Usage: Just type /stop\n\n'
+        '/start - Start the bot.\n\n'
+        '/stop - Stop the bot.\n\n'
         '/add <src> <dst> <travel_date> <price> OR /add <link> <price> - Add a travel direction.\n'
         'Example: /add RMO EVN 15.10.2024 300\n'
         'Note: src and dst should be 3-letter airport codes. The price must be a whole number of EUR.\n\n'
         '/remove <src> <dst> OR /remove <link> - Remove a travel direction.\n'
         'Example: /remove RMO EVN\n'
         'Note: src and dst should be 3-letter airport codes.\n\n'
-        '/go - Manually launch the bot.\n'
-        'Usage: Just type /go\n\n'
+        '/go - Manually launch the bot.\n\n'
         '/schedule [pattern] - Toggle scheduling on/off, or set a check frequency.\n'
-        'Usage: /schedule to toggle, or with a pattern:\n'
+        'Example: /schedule to toggle, or with a pattern:\n'
         '  1h            every hour (default)\n'
         '  Nh            every N hours\n'
         '  6pm           daily at 6pm\n'
         '  8am-11pm      every hour from 8am to 11pm\n'
         '  8am-11pm 2h   every 2 hours from 8am to 11pm\n\n'
-        '/less - Toggles silence mode for the chat. If ON, messages will be sent only on changes.\n'
-        'Usage: Just type /less\n\n'
-        '/airports - lists all available airports by their codes.\n'
-        'Usage: Just type /airports\n\n'
-        '/directions - lists all directions related to the chat.\n'
-        'Usage: Just type /directions\n\n'
-        '/stats - draws the chart of price changes for certain direction.\n'
-        'Usage: /stats <src> <dst> OR /stats <src> <dst> <date>\n\n'
-        '/auth - returns chat id and one-time code for authorization in API.\n'
-        'Usage: Just type /auth\n\n'
+        '/less - Toggles silence mode for the chat. If ON, messages will be sent only on changes.\n\n'
+        '/airports - lists all available airports by their codes.\n\n'
+        '/directions - lists all directions related to the chat.\n\n'
+        '/stats <src> <dst> [<date>] - draws the chart of price changes for certain direction.\n'
+        'Example: /stats RMO EVN 15.10.2024\n\n'
+        '/auth - returns chat id and one-time code for authorization in API.\n\n'
+        '/info - returns chat specific information.\n\n'
         '/notify <src> <dst> [+|-] - Set notification preference for a direction.\n'
         'Example: /notify RMO EVN -\n'
         'Note: + for price increase only, - for price decrease only, omit for any change.\n\n'
@@ -253,6 +247,25 @@ async def cmd_auth(message: types.Message):
         await cache.set(f'otp:{message.chat.id}', otp, ex=180)  # code expires in 3 minutes
 
     await message.reply(f"Chat ID: {message.chat.id}\nCode: {otp}\n\nDon't share this information with anyone!")
+
+
+@router.message(Command(commands=['info']))
+async def cmd_info(message: types.Message):
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats([message.chat.id])
+
+    if not directions_by_chats:
+        await message.reply('Bot was not started yet!')
+        return
+
+    chat, directions = next(iter(directions_by_chats.items()))
+
+    await message.reply(
+        f'Chat ID: {chat.tg_id}\n'
+        f'Schedule: {chat.rrule if chat.schedule else "OFF"}\n'
+        f'Silent mode: {"ON" if chat.less else "OFF"}\n'
+        f'Last notified: {chat.last_notified.strftime("%Y-%m-%d %H:%M:%S") if chat.last_notified else "never"}\n'
+        f'Directions: {len(directions)}'
+    )
 
 
 @router.message(Command(commands=['directions']))

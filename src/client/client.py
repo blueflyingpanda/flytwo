@@ -6,7 +6,7 @@ from typing import Any
 import aiohttp
 from pydantic import BaseModel, TypeAdapter
 
-from client.currency import CURRENCY_SYMBOLS
+from conf import CURRENCY_SYMBOLS
 
 
 class Direction(Enum):

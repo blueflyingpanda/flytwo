@@ -1,37 +1,70 @@
-from os import environ
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dotenv import load_dotenv
 
-load_dotenv()
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
-BOT_TOKEN = environ.get('BOT_TOKEN')
+    BOT_TOKEN: str | None = None
+    API_URL: str | None = None
+    BOT_SECRET: str | None = None
+    TG_SECRET: str | None = None
 
-API_URL = environ.get('API_URL')
-BOT_SECRET = environ.get('BOT_SECRET')
-TG_SECRET = environ.get('TG_SECRET')
+    DB_USER: str | None = None
+    DB_PASS: str | None = None
+    DB_HOST: str | None = None
+    DB_PORT: str | None = None
+    DB_NAME: str | None = None
 
-DB_USER = environ.get('DB_USER')
-DB_PASS = environ.get('DB_PASS')
-DB_HOST = environ.get('DB_HOST')
-DB_PORT = environ.get('DB_PORT')
-DB_NAME = environ.get('DB_NAME')
+    REDIS_PASS: str | None = None
+    REDIS_HOST: str | None = None
+    REDIS_PORT: str | None = None
+    REDIS_TTL: int | None = None
 
-REDIS_PASS = environ.get('REDIS_PASS')
-REDIS_HOST = environ.get('REDIS_HOST')
-REDIS_PORT = environ.get('REDIS_PORT')
-REDIS_TTL = environ.get('REDIS_TTL')
+    JWT_SECRET: str | None = None
+    JWT_ACCESS_TOKEN_EXPIRE: int | None = None
 
-if REDIS_TTL is not None:
-    REDIS_TTL = int(REDIS_TTL)
+    CORS_ORIGINS: list[str] = ['*']
+    DEBUG: bool = False
 
-JWT_SECRET = environ.get('JWT_SECRET')
-JWT_ACCESS_TOKEN_EXPIRE = environ.get('JWT_ACCESS_TOKEN_EXPIRE')
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v: str | list) -> list[str]:
+        if isinstance(v, str):
+            return v.split(',')
+        return v
 
-if JWT_ACCESS_TOKEN_EXPIRE is not None:
-    JWT_ACCESS_TOKEN_EXPIRE = int(JWT_ACCESS_TOKEN_EXPIRE)
 
-# JWT_REFRESH_TOKEN_EXPIRE = int(environ.get('JWT_REFRESH_TOKEN_EXPIRE'))
+_settings = Settings()
 
-CORS_ORIGINS = environ.get('CORS_ORIGINS').split(',') if environ.get('CORS_ORIGINS') else ['*']
+BOT_TOKEN = _settings.BOT_TOKEN
+API_URL = _settings.API_URL
+BOT_SECRET = _settings.BOT_SECRET
+TG_SECRET = _settings.TG_SECRET
 
-DEBUG = environ.get('DEBUG') == '1'
+DB_USER = _settings.DB_USER
+DB_PASS = _settings.DB_PASS
+DB_HOST = _settings.DB_HOST
+DB_PORT = _settings.DB_PORT
+DB_NAME = _settings.DB_NAME
+
+REDIS_PASS = _settings.REDIS_PASS
+REDIS_HOST = _settings.REDIS_HOST
+REDIS_PORT = _settings.REDIS_PORT
+REDIS_TTL = _settings.REDIS_TTL
+
+JWT_SECRET = _settings.JWT_SECRET
+JWT_ACCESS_TOKEN_EXPIRE = _settings.JWT_ACCESS_TOKEN_EXPIRE
+
+CORS_ORIGINS = _settings.CORS_ORIGINS
+DEBUG = _settings.DEBUG
+
+CURRENCY_SYMBOLS = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'CNY': '¥',
+    'INR': '₹',
+    'RUB': '₽',
+}

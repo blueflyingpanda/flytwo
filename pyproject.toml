@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv",
     "redis",
     "pydantic",
+    "pydantic-settings",
     "python-json-logger",
     "pycountry",
     "matplotlib",
@@ -54,6 +55,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/client"]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "session"
+asyncio_mode = "auto"
+env_override_existing_values = 1
+env_files = ["tests/.env"]
 
 [tool.ruff]
 line-length = 120

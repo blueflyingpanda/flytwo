@@ -49,10 +49,10 @@ class DBUtils:
             result = await session.execute(stmt)
             instance = result.scalars().first()
 
-        if instance:
-            await session.delete(instance)
-            await session.commit()
-            return True  # Successfully deleted
+            if instance:
+                await session.delete(instance)
+                await session.commit()
+                return True  # Successfully deleted
 
         return False  # No record found to delete
 
@@ -76,13 +76,15 @@ class DataAccessLayer:
         return await DBUtils.delete(Chat, tg_id=tg_id)
 
     @staticmethod
-    async def create_direction(chat_id: int, src: str, dst: str, price: int, travel_date: date) -> [Direction, bool]:
+    async def create_direction(
+        chat_id: int, src: str, dst: str, price: int, travel_date: date
+    ) -> tuple[Direction, bool]:
         return await DBUtils.upsert(
             Direction, chat_id=chat_id, src=src, dst=dst, defaults={'travel_date': travel_date, 'price': price}
         )
 
     @staticmethod
-    async def remove_direction(chat_id: int, src: str, dst: str) -> [Direction, bool]:
+    async def remove_direction(chat_id: int, src: str, dst: str) -> tuple[Direction, bool]:
         return await DBUtils.delete(Direction, chat_id=chat_id, src=src, dst=dst)
 
     @staticmethod

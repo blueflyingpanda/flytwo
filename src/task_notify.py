@@ -9,8 +9,9 @@ from dateutil.rrule import rrulestr
 from bot.notifier import TgBotNotifier
 from cache import redis_client
 from change_detector import FlightsChangeDetector
-from client.client import Flight, FlyoneClient
+from client import Airport, Flight
 from dal import DataAccessLayer
+from dispatcher import dispatcher
 from fetcher import FlightsFetcher
 
 
@@ -33,8 +34,10 @@ async def main(chat_id: int | None = None, manual: bool = False):
         if chat:
             display_all = not chat.less
 
-    fc = FlyoneClient()
-    airport_by_code = await fc.airport_by_code
+    airport_by_code: dict[str, Airport] = {}
+    clients = [client_cls() for client_cls in dispatcher.get_client_classes()]
+    for client in clients:
+        airport_by_code |= await client.airport_by_code()
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
@@ -63,7 +66,8 @@ async def main(chat_id: int | None = None, manual: bool = False):
                     threshold=direction.threshold,
                 )
 
-                to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, fc))
+                for client in clients:
+                    to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, client))
 
     msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
 

@@ -1,10 +1,10 @@
 import asyncio
 from decimal import Decimal
-from typing import Any
 
 import click
 
-from client.client import Airport, Flight, FlyoneClient
+from client import Airport, FareStats, Flight
+from dispatcher import dispatcher
 
 
 class Color:
@@ -42,26 +42,26 @@ def display_flights(flights: list[Flight], price_limit: Decimal) -> None:
 
         click.echo(
             f'{color}{formatted_date}: {from_airport_str.ljust(44)} -> {to_airport_str.ljust(44)} '
-            f'- {price.rjust(5)} {flight.currency}{Color.RESET}'
+            f'- {price.rjust(5)} {flight.currency} [{flight.airline}]{Color.RESET}'
         )
 
 
-def display_fares(response: dict[str, Any], airports_by_code: dict[str, Airport], limit: int, price: Decimal) -> None:
-    origin = response['origin']
-    travel_date = response['travelDate']
+def display_fares(response: FareStats, airports_by_code: dict[str, Airport], limit: int, price: Decimal) -> None:
+    origin = response.origin
+    travel_date = response.travelDate
 
-    fares = [fare for fare in response['destinationFares'] if price is None or fare['price'] <= price]
+    fares = [fare for fare in response.destinationFares if price is None or fare.price <= price]
     if limit >= 0:
         fares = fares[:limit]
 
-    for n, fare in enumerate(sorted(fares, key=lambda f: f['price']), start=1):
-        destination = fare['destination']
+    for n, fare in enumerate(sorted(fares, key=lambda f: f.price), start=1):
+        destination = fare.destination
         dep_airport = airports_by_code.get(origin) or Airport()
         arr_airport = airports_by_code.get(destination) or Airport()
 
         dep_airport_str = f'{dep_airport.code} <{dep_airport.name}> |{dep_airport.country}|'
         arr_airport_str = f'{arr_airport.code} <{arr_airport.name}> |{arr_airport.country}|'
-        price_str = f'{fare["price"]}'
+        price_str = f'{fare.price}'
 
         click.echo(
             f'#{str(n).zfill(3)} {travel_date} '
@@ -71,25 +71,25 @@ def display_fares(response: dict[str, Any], airports_by_code: dict[str, Airport]
 
 
 async def run_fares(origin: str, currency: str, travel_date: str, price: Decimal, limit: int):
-    fc = FlyoneClient()
-
-    airports_by_code = await fc.airport_by_code
-    response = await fc.get_fare_stats(dep=origin, travel_date=travel_date, currency=currency)
-
-    display_fares(response, airports_by_code, limit, price)
+    airports_by_code: dict[str, Airport] = {}
+    for client_cls in dispatcher.get_client_classes():
+        client = client_cls()
+        airports_by_code |= await client.airport_by_code()
+        response = await client.get_fare_stats(dep=origin, travel_date=travel_date, currency=currency)
+        display_fares(response, airports_by_code, limit, price)
 
 
 async def run_flights(origin: str, destination: str, currency: str, travel_date: str, price: Decimal):
-    fc = FlyoneClient()
+    for client_cls in dispatcher.get_client_classes():
+        client = client_cls()
+        forward, backward = await client.get_flights(
+            dep=origin, arr=destination, dep_date=travel_date, arr_date=travel_date, currency=currency
+        )
 
-    forward, backward = await fc.get_flights(
-        dep=origin, arr=destination, dep_date=travel_date, arr_date=travel_date, currency=currency
-    )
-
-    click.echo('Forward Flights:\n')
-    display_flights(forward, price)
-    click.echo('\nBackward Flights:\n')
-    display_flights(backward, price)
+        click.echo('Forward Flights:\n')
+        display_flights(forward, price)
+        click.echo('\nBackward Flights:\n')
+        display_flights(backward, price)
 
 
 @click.command()

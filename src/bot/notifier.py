@@ -5,7 +5,7 @@ from decimal import Decimal
 import aiohttp
 from pycountry import countries
 
-from client.client import Flight
+from client import Flight
 from conf import BOT_TOKEN
 from logs import logger
 
@@ -55,7 +55,7 @@ class TgBotNotifier:
 
             price = f'{flight.price}'
 
-            msg = f'{f_date}: {price.rjust(3)}{flight.currency_symbol}'
+            msg = f'{f_date}: {price.rjust(3)}{flight.currency_symbol} [{flight.airline}]'
 
             if flight.price == min_price:
                 msg = f'{msg} ✅'

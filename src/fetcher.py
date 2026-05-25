@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 
 import db
 from bot.notifier import TgBotNotifier
-from client.client import FLIGHTS_TYPE_ADAPTER, Flight, FlyoneClient, FlyoneError
+from client import FLIGHTS_TYPE_ADAPTER, BaseClient, ClientError, Flight
 from conf import REDIS_TTL
 from dal import DataAccessLayer
 from logs import logger
@@ -15,7 +15,7 @@ from logs import logger
 class FlightsFetcher:
     @staticmethod
     async def fetch_flights(
-        direction: db.Direction, notifier: TgBotNotifier, cache: Redis, fc: FlyoneClient
+        direction: db.Direction, notifier: TgBotNotifier, cache: Redis, client: BaseClient
     ) -> tuple[list[Flight], list[Flight], TgBotNotifier] | None:
         travel_date = direction.travel_date.isoformat()
         src = direction.src
@@ -32,12 +32,12 @@ class FlightsFetcher:
 
         if forward_value is None or backward_value is None:
             try:
-                logger.info('Fetching data from flyone: %s -> %s', src, dst)
+                logger.info('Fetching data from %s: %s -> %s', client.__class__.__name__, src, dst)
 
-                forward, backward = await fc.get_flights(
+                forward, backward = await client.get_flights(
                     dep=src, arr=dst, dep_date=travel_date, arr_date=travel_date, currency='EUR'
                 )
-            except FlyoneError as e:
+            except ClientError as e:
                 err_msg = f'{e}'
                 logger.error(err_msg)
                 await notifier.send_err(err_msg)

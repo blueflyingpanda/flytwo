@@ -15,9 +15,10 @@ from api.cache_utils import airports_key_builder, price_history_key_builder
 from api.models import NotifyRequest, Ping, UserDirection
 from bot.bot import bot, dp
 from cache import redis_client
-from client.client import Airport, FlyoneClient
+from client import Airport
 from conf import BOT_SECRET, CORS_ORIGINS, DEBUG
 from dal import DataAccessLayer
+from dispatcher import dispatcher
 from logs import logger
 from plotter import PriceHistory
 from task_notify import main as notify_main
@@ -81,10 +82,11 @@ async def price_history(src: str, dst: str, dt: date | None = None) -> PriceHist
 @app.get('/airports', response_model=list[Airport])
 @cache(expire=3600, key_builder=airports_key_builder)  # Cache for 1 hour
 async def airports() -> list[Airport]:
-    """Proxy endpoint to fetch airports from Flyone API."""
-    fc = FlyoneClient()
+    """Proxy endpoint to fetch airports from all registered airlines."""
     logger.info('Fetching airports')
-    airport_by_code = await fc.airport_by_code
+    airport_by_code: dict = {}
+    for client_cls in dispatcher.get_client_classes():
+        airport_by_code |= await client_cls().airport_by_code()
     return list(airport_by_code.values())
 
 

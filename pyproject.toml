@@ -61,6 +61,7 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_mode = "auto"
 env_override_existing_values = 1
 env_files = ["tests/.env"]
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 120
@@ -95,6 +96,7 @@ ignore = [
     "SIM105", # Use `contextlib.suppress(TypeError)` instead of `try`-`except`-`pass` - rule ignored
     "SIM108", # Use `getattr` with a default value instead of catching `AttributeError` - rule ignored
     "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "N815",   # Variable `destinationFares` in class scope should not be mixedCase
 ]
 
 [tool.ruff.format]

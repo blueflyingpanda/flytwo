@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from bot.notifier import TgBotNotifier
-from client.client import Airport, Flight
+from client import Airport, Flight
 
 
 async def test_price_change():
@@ -13,6 +13,7 @@ async def test_price_change():
         travel_date='29.1.2024',
         currency='EUR',
         price=Decimal(80),
+        airline='flyone',
     )
 
     increased_flight = Flight(
@@ -22,6 +23,7 @@ async def test_price_change():
         currency='EUR',
         price=Decimal(100),
         prev_price=Decimal(75),
+        airline='flyone',
     )
 
     decreased_flight = Flight(
@@ -31,15 +33,16 @@ async def test_price_change():
         currency='EUR',
         price=Decimal(50),
         prev_price=Decimal(110),
+        airline='flyone',
     )
 
     msg = await tg_notifier.form_msg([new_flight, increased_flight, decreased_flight])
 
     new, increased, decreased = msg.split('\n')
 
-    assert new == '29.01.2024:  80€   '
-    assert increased == '30.01.2024: 100€ ❌ ⬆️ 25€ (was  75€)'
-    assert decreased == '31.01.2024:  50€ ✅ ⬇️ 60€ (was 110€)'
+    assert new == '29.01.2024:  80€ [flyone]   '
+    assert increased == '30.01.2024: 100€ [flyone] ❌ ⬆️ 25€ (was  75€)'
+    assert decreased == '31.01.2024:  50€ [flyone] ✅ ⬇️ 60€ (was 110€)'
 
 
 async def test_form_err_msg():

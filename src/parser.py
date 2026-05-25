@@ -1,25 +1,28 @@
 import re
-from datetime import datetime
-from urllib.parse import parse_qs, urlparse
+from abc import ABC, abstractmethod
+from typing import NamedTuple
 
 _TIME_PAT = r'(\d{1,2})(am|pm)'
 
 
-class UrlParser:
-    @staticmethod
-    def parse(url: str) -> tuple[str, str, str]:
-        parsed_url = urlparse(url)
-        query_params = parse_qs(parsed_url.query)
+class ParsedUrl(NamedTuple):
+    src: str
+    dst: str
+    travel_date: str
 
-        src = query_params.get('depCity', [''])[0]
-        dst = query_params.get('arrCity', [''])[0]
-        travel_date = query_params.get('startDate', [''])[0]
 
-        if travel_date:
-            parsed_date = datetime.strptime(travel_date, '%d-%b-%Y')
-            travel_date = parsed_date.strftime('%d.%m.%Y')
+class BaseUrlParser(ABC):
+    def __init__(self, url: str):
+        self.url = url
 
-        return src, dst, travel_date
+    @classmethod
+    @abstractmethod
+    def can_parse(cls, url: str) -> bool:
+        """Return True if this parser can handle the given URL."""
+
+    @abstractmethod
+    def parse(self) -> ParsedUrl:
+        """Extract src, dst, and travel_date from the URL."""
 
 
 class ScheduleParser:

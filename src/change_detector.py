@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import db
-from client.client import Flight
+from client import Flight
 from dal import DataAccessLayer
 
 

@@ -8,11 +8,12 @@ from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 
 from bot.notifier import TgBotNotifier
-from bot.parser import ScheduleParser, UrlParser
 from cache import redis_client
-from client.client import FlyoneClient
+from client import Airport
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
 from dal import DataAccessLayer
+from dispatcher import dispatcher
+from parser import ScheduleParser
 from plotter import MissingPriceHistoryError, Plotter
 
 bot = Bot(token=BOT_TOKEN)
@@ -82,7 +83,11 @@ async def cmd_add(message: types.Message):
     command_parts = message.text.split()
 
     if len(command_parts) == 3:
-        src, dst, travel_date_str = UrlParser.parse(command_parts[1])
+        parser = dispatcher.pick_parser(command_parts[1])
+        if parser is None:
+            await message.reply('Unrecognized link. Please use a supported airline URL or enter airports manually.')
+            return
+        src, dst, travel_date_str = parser.parse()
         command_parts = [command_parts[0], src, dst, travel_date_str, command_parts[2]]
 
     if len(command_parts) != 5:
@@ -116,8 +121,9 @@ async def cmd_add(message: types.Message):
         await message.reply('Invalid airport code! Should be 3 letters.')
         return
 
-    fc = FlyoneClient()
-    airport_by_code = await fc.airport_by_code
+    airport_by_code: dict[str, Airport] = {}
+    for client_cls in dispatcher.get_client_classes():
+        airport_by_code |= await client_cls().airport_by_code()
 
     if src not in airport_by_code or dst not in airport_by_code:
         await message.reply('Airport not supported. Find supported airports using /airports')
@@ -144,7 +150,11 @@ async def cmd_remove(message: types.Message):
     command_parts = message.text.split()
 
     if len(command_parts) == 2:
-        src, dst, _ = UrlParser.parse(command_parts[1])
+        parser = dispatcher.pick_parser(command_parts[1])
+        if parser is None:
+            await message.reply('Unrecognized link. Please use a supported airline URL or enter airports manually.')
+            return
+        src, dst, _ = parser.parse()
         command_parts = [command_parts[0], src, dst]
 
     if len(command_parts) != 3:
@@ -281,8 +291,9 @@ async def cmd_directions(message: types.Message):
     if not directions:
         await message.reply('No directions found.')
 
-    fc = FlyoneClient()
-    airport_by_code = await fc.airport_by_code
+    airport_by_code: dict[str, Airport] = {}
+    for client_cls in dispatcher.get_client_classes():
+        airport_by_code |= await client_cls().airport_by_code()
 
     msgs = []
 
@@ -296,9 +307,9 @@ async def cmd_directions(message: types.Message):
 
 @router.message(Command(commands=['airports']))
 async def cmd_airports(message: types.Message):
-    fc = FlyoneClient()
-
-    airport_by_code = await fc.airport_by_code
+    airport_by_code: dict[str, Airport] = {}
+    for client_cls in dispatcher.get_client_classes():
+        airport_by_code |= await client_cls().airport_by_code()
     msgs = [
         f'{code} [{airport.name}] |{airport.country}|'
         for code in sorted(iter(airport_by_code.keys()))

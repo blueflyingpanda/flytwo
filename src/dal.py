@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from client.client import Flight as FetchedFlight
+from client import Flight as FetchedFlight
 from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase
 from logs import logger
 from plotter import PricePoint
@@ -68,11 +68,11 @@ class DataAccessLayer:
         return instance
 
     @staticmethod
-    async def create_chat(tg_id: int) -> [Chat, bool]:
+    async def create_chat(tg_id: int) -> tuple[Chat, bool]:
         return await DBUtils.upsert(Chat, tg_id=tg_id)
 
     @staticmethod
-    async def remove_chat(tg_id: int) -> [Chat, bool]:
+    async def remove_chat(tg_id: int) -> tuple[Chat, bool]:
         return await DBUtils.delete(Chat, tg_id=tg_id)
 
     @staticmethod

@@ -1,94 +1,33 @@
-from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Any
 
 import aiohttp
-from pydantic import BaseModel, TypeAdapter
 
-from conf import CURRENCY_SYMBOLS
-
-
-class Direction(Enum):
-    FORWARD = 1
-    BACKWARD = 2
+from client import Airport, BaseClient, ClientError, Direction, FareStats, Flight
 
 
-class Airport(BaseModel):
-    code: str = ''
-    name: str = ''
-    country: str = ''
-
-
-class Flight(BaseModel):
-    from_airport: Airport
-    to_airport: Airport
-    travel_date: str
-    currency: str
-    price: Decimal
-    prev_price: Decimal | None = None
-
-    def __hash__(self) -> int:
-        return hash(f'{self.from_airport.code}{self.to_airport.code}{self.travel_date}')
-
-    def __eq__(self, other) -> bool:
-        import db  # import is placed here deliberately to be able to use the client without db
-
-        if isinstance(other, db.Flight):
-            # to get right associated stored in db flight in FlightsChangeDetector
-            return (
-                self.from_airport.code == other.src
-                and self.to_airport.code == other.dst
-                and self.travel_date == f'{other.travel_date:%-d.%-m.%Y}'
-            )
-
-        return super().__eq__(other)
-
-    @property
-    def currency_symbol(self) -> str:
-        return CURRENCY_SYMBOLS.get(self.currency, self.currency)
-
-
-FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])
-
-
-class FlyoneError(Exception):
-    """Base exception for all Flyone client exceptions."""
-
-
-class FlyoneClient:
-    view_url = 'https://bookings.flyone.eu/FareView'
+class FlyoneClient(BaseClient):
     api_url = 'https://api2.flyone.eu/api'
+
+    view_url = 'https://bookings.flyone.eu/FareView'
     ssl = False
 
-    default_currency = 'EUR'
-
-    def __init__(self):
-        self._token: str = ''
-        self._airports_by_code: dict[str, Airport] = {}
-
-    async def refresh_token(self):
+    async def _refresh_token(self):
         async with aiohttp.ClientSession() as session, session.get(self.view_url, ssl=self.ssl) as response:
             self._token = response.cookies.get('COOKIE_TOKEN').value
 
-    @property
-    async def token(self):
-        if not self._token:
-            await self.refresh_token()
-        return self._token
-
-    async def request(self, path: str, data: dict | list, retry: bool = False) -> dict[str, Any]:
-        token = await self.token
+    async def _request(self, path: str, data: dict | list, is_retry: bool = False) -> dict[str, Any]:
+        token = await self._get_token()
 
         headers = {'Authorization': f'Bearer {token}'}
         async with aiohttp.ClientSession() as session:
             async with session.post(f'{self.api_url}/{path}', json=data, headers=headers, ssl=self.ssl) as response:
                 if response.status != 200:
-                    if response.status == 401 and not retry:
-                        await self.refresh_token()
-                        return await self.request(path, data, retry=True)
+                    if response.status == 401 and not is_retry:
+                        await self._refresh_token()
+                        return await self._request(path, data, is_retry=True)
                     else:
-                        raise FlyoneError(f'{response.status}: {await response.text()}')
+                        raise ClientError(f'{response.status}: {await response.text()}')
 
                 response_data = await response.json()
 
@@ -96,15 +35,14 @@ class FlyoneClient:
 
                 if not result['isSuccess']:
                     msgs = result['msgs']
-                    raise FlyoneError('\n'.join(f'{msg["code"]}: {msg["msgText"]}' for msg in msgs))
+                    raise ClientError('\n'.join(f'{msg["code"]}: {msg["msgText"]}' for msg in msgs))
 
                 return response_data
 
-    @property
     async def airport_by_code(self) -> dict[str, 'Airport']:
         if not self._airports_by_code:
             result: dict[str, Airport] = {}
-            response = await self.request('Routes/get-routes', {})
+            response = await self._request('Routes/get-routes', {})
 
             for route in response['routes']:
                 code = route['depCode']
@@ -114,14 +52,6 @@ class FlyoneClient:
 
         return self._airports_by_code
 
-    async def get_fare_stats(self, *, dep: str, travel_date: str = '', currency: str = '') -> dict[str, Any]:
-        payload = {
-            'origin': dep,
-            'travelDate': travel_date or datetime.now().strftime('%-d.%-m.%Y'),
-            'currencyCode': currency or self.default_currency,
-        }
-        return await self.request('search/get-route-fare', payload)
-
     async def get_flights(
         self,
         *,
@@ -129,7 +59,7 @@ class FlyoneClient:
         arr: str,
         dep_date: str,
         arr_date: str,
-        currency: str = '',
+        currency: str,
         before: int = 10,
         after: int = 10,
         passengers: int = 1,
@@ -158,15 +88,15 @@ class FlyoneClient:
                 'paxInfo': [{'paxKey': f'Adult{n}', 'paxType': 1} for n in range(1, passengers + 1)],
             },
             'ipAddress': '8.8.8.8',  # required by server - for anonymity uses google dns ip address
-            'currencyCode': currency or self.default_currency,
+            'currencyCode': currency,
         }
 
-        result = await self.request('search/schedule-flights', payload)
+        result = await self._request('search/schedule-flights', payload)
 
         flights_forwards: list[Flight] = []
         flights_backward: list[Flight] = []
 
-        airport_by_code = await self.airport_by_code
+        airport_by_code = await self.airport_by_code()
         dep_airport: Airport = airport_by_code[dep]
         arr_airport: Airport = airport_by_code[arr]
 
@@ -185,6 +115,7 @@ class FlyoneClient:
                             travel_date=f'{day["date"]}.{month_num}.{year}',
                             currency=currency,
                             price=Decimal(day['price']),
+                            airline='flyone',
                         )
                         for day in month['days']
                         if day['isFlightAvailable'] and not day['isSoldOut']
@@ -197,3 +128,12 @@ class FlyoneClient:
                 flights_forwards = days
 
         return flights_forwards, flights_backward
+
+    async def get_fare_stats(self, *, dep: str, travel_date: str, currency: str) -> FareStats:
+        payload = {
+            'origin': dep,
+            'travelDate': travel_date,
+            'currencyCode': currency,
+        }
+        response = await self._request('search/get-route-fare', payload)
+        return FareStats.model_validate(response)

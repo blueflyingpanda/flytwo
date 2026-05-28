@@ -97,6 +97,10 @@ class FlyoneClient(BaseClient):
         flights_backward: list[Flight] = []
 
         airport_by_code = await self.airport_by_code()
+
+        if dep not in airport_by_code or arr not in airport_by_code:
+            return flights_forwards, flights_backward
+
         dep_airport: Airport = airport_by_code[dep]
         arr_airport: Airport = airport_by_code[arr]
 

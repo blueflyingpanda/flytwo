@@ -123,6 +123,10 @@ class WizzairClient(BaseClient):
         result = await self._request('asset/farechart', payload)
 
         airport_by_code = await self.airport_by_code()
+
+        if dep not in airport_by_code or arr not in airport_by_code:
+            return [], []
+
         dep_airport = airport_by_code[dep]
         arr_airport = airport_by_code[arr]
 

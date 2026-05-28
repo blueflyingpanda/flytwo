@@ -17,6 +17,7 @@ class Airport(BaseModel):
     code: str = ''
     name: str = ''
     country: str = ''
+    currency: str = ''
 
 
 class Flight(BaseModel):
@@ -56,6 +57,7 @@ FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])
 class DestinationFare(BaseModel):
     destination: str
     price: Decimal
+    currency: str = 'EUR'
 
 
 class FareStats(BaseModel):
@@ -70,12 +72,13 @@ class ClientError(Exception):
 
 class BaseClient(ABC):
     api_url: str
+    auth_url: str
 
     def __init__(self):
         self._token: str = ''
         self._airports_by_code: dict[str, Airport] = {}
 
-    async def _get_token(self):
+    async def _get_token(self) -> str:
         if not self._token:
             await self._refresh_token()
         return self._token

@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from client import Flight as FetchedFlight
-from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase
+from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase, Setting
 from logs import logger
 from plotter import PricePoint
 
@@ -284,3 +284,23 @@ class DataAccessLayer:
                     price_history_by_date[flight.travel_date] = history
 
             return price_history_by_date
+
+    @staticmethod
+    async def get_setting(name: str) -> str:
+        async with ASession() as session:
+            stmt = select(Setting).where(Setting.key == name, Setting.active)
+            result = await session.execute(stmt)
+            setting = result.scalars().first()
+
+            if not setting:
+                raise KeyError(f'Active setting with key "{name}" not found')
+
+            return setting.value
+
+    @staticmethod
+    async def set_setting(name: str, value: str):
+        async with ASession() as session:
+            stmt = insert(Setting).values(key=name, value=value)
+            stmt = stmt.on_conflict_do_update(index_elements=['key'], set_={'value': value, 'active': True})
+            await session.execute(stmt)
+            await session.commit()

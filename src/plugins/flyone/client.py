@@ -9,11 +9,11 @@ from client import Airport, BaseClient, ClientError, Direction, FareStats, Fligh
 class FlyoneClient(BaseClient):
     api_url = 'https://api2.flyone.eu/api'
 
-    view_url = 'https://bookings.flyone.eu/FareView'
+    auth_url = 'https://bookings.flyone.eu/FareView'
     ssl = False
 
     async def _refresh_token(self):
-        async with aiohttp.ClientSession() as session, session.get(self.view_url, ssl=self.ssl) as response:
+        async with aiohttp.ClientSession() as session, session.get(self.auth_url, ssl=self.ssl) as response:
             self._token = response.cookies.get('COOKIE_TOKEN').value
 
     async def _request(self, path: str, data: dict | list, is_retry: bool = False) -> dict[str, Any]:

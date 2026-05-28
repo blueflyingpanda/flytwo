@@ -62,6 +62,15 @@ class Flight(FlightBase):
         return hash(f'{self.src}{self.dst}{self.travel_date.strftime("%-d.%-m.%Y")}')
 
 
+class Setting(Base):
+    __tablename__ = 'settings'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String, unique=True)
+    value: Mapped[str] = mapped_column(String)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text('true'))
+
+
 connection_string = (
     f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
     if DB_PORT

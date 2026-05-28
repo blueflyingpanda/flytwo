@@ -66,7 +66,7 @@ def display_fares(response: FareStats, airports_by_code: dict[str, Airport], lim
         click.echo(
             f'#{str(n).zfill(3)} {travel_date} '
             f'{dep_airport_str.ljust(44)} -> {arr_airport_str.ljust(44)} '
-            f'- {price_str.rjust(5)}'
+            f'- {price_str.rjust(5)} {fare.currency}'
         )
 
 

@@ -121,9 +121,7 @@ async def cmd_add(message: types.Message):
         await message.reply('Invalid airport code! Should be 3 letters.')
         return
 
-    airport_by_code: dict[str, Airport] = {}
-    for client_cls in dispatcher.get_client_classes():
-        airport_by_code |= await client_cls().airport_by_code()
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
 
     if src not in airport_by_code or dst not in airport_by_code:
         await message.reply('Airport not supported. Find supported airports using /airports')
@@ -291,9 +289,7 @@ async def cmd_directions(message: types.Message):
     if not directions:
         await message.reply('No directions found.')
 
-    airport_by_code: dict[str, Airport] = {}
-    for client_cls in dispatcher.get_client_classes():
-        airport_by_code |= await client_cls().airport_by_code()
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
 
     msgs = []
 
@@ -307,9 +303,8 @@ async def cmd_directions(message: types.Message):
 
 @router.message(Command(commands=['airports']))
 async def cmd_airports(message: types.Message):
-    airport_by_code: dict[str, Airport] = {}
-    for client_cls in dispatcher.get_client_classes():
-        airport_by_code |= await client_cls().airport_by_code()
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
+
     msgs = [
         f'{code} [{airport.name}] |{airport.country}|'
         for code in sorted(iter(airport_by_code.keys()))

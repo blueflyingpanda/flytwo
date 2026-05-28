@@ -1,6 +1,9 @@
+import asyncio
+import logging
+
 import plugins  # noqa: F401 - triggers plugin registration via plugins/__init__.py
 from airline import Airline
-from client import BaseClient
+from client import Airport, BaseClient
 from parser import BaseUrlParser
 
 
@@ -22,6 +25,21 @@ class AirlineDispatcher:
 
     def get_client_classes(self) -> list[type[BaseClient]]:
         return list(self.clients_by_airlines.values())
+
+    async def get_airport_by_code(self) -> dict[str, Airport]:
+        client_classes = self.get_client_classes()
+        tasks = [client_cls().airport_by_code() for client_cls in client_classes]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        airport_by_code: dict[str, Airport] = {}
+
+        for client_cls, result in zip(client_classes, results, strict=True):
+            if isinstance(result, Exception):
+                logging.error('%s failed with error: %s', client_cls.__name__, result)
+                continue
+            airport_by_code |= result
+
+        return airport_by_code
 
 
 dispatcher = AirlineDispatcher()

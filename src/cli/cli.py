@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from decimal import Decimal
 
 import click
@@ -71,18 +72,22 @@ def display_fares(response: FareStats, airports_by_code: dict[str, Airport], lim
 
 
 async def run_fares(origin: str, currency: str, travel_date: str, price: Decimal, limit: int):
-    airports_by_code: dict[str, Airport] = {}
-    for client_cls in dispatcher.get_client_classes():
-        client = client_cls()
-        airports_by_code |= await client.airport_by_code()
-        response = await client.get_fare_stats(dep=origin, travel_date=travel_date, currency=currency)
-        display_fares(response, airports_by_code, limit, price)
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
+
+    async def process_client(client_cls):
+        try:
+            response = await client_cls().get_fare_stats(dep=origin, travel_date=travel_date, currency=currency)
+            display_fares(response, airport_by_code, limit, price)
+        except Exception:
+            logging.exception('%s failed to fetch fare stats', client_cls.__name__)
+
+    tasks = [process_client(cls) for cls in dispatcher.get_client_classes()]
+    await asyncio.gather(*tasks)
 
 
 async def run_flights(origin: str, destination: str, currency: str, travel_date: str, price: Decimal):
-    for client_cls in dispatcher.get_client_classes():
-        client = client_cls()
-        forward, backward = await client.get_flights(
+    async def process_client(client_cls):
+        forward, backward = await client_cls().get_flights(
             dep=origin, arr=destination, dep_date=travel_date, arr_date=travel_date, currency=currency
         )
 
@@ -90,6 +95,9 @@ async def run_flights(origin: str, destination: str, currency: str, travel_date:
         display_flights(forward, price)
         click.echo('\nBackward Flights:\n')
         display_flights(backward, price)
+
+    tasks = [process_client(cls) for cls in dispatcher.get_client_classes()]
+    await asyncio.gather(*tasks)
 
 
 @click.command()

@@ -84,9 +84,7 @@ async def price_history(src: str, dst: str, dt: date | None = None) -> PriceHist
 async def airports() -> list[Airport]:
     """Proxy endpoint to fetch airports from all registered airlines."""
     logger.info('Fetching airports')
-    airport_by_code: dict = {}
-    for client_cls in dispatcher.get_client_classes():
-        airport_by_code |= await client_cls().airport_by_code()
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
     return list(airport_by_code.values())
 
 

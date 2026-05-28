@@ -34,10 +34,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
         if chat:
             display_all = not chat.less
 
-    airport_by_code: dict[str, Airport] = {}
-    clients = [client_cls() for client_cls in dispatcher.get_client_classes()]
-    for client in clients:
-        airport_by_code |= await client.airport_by_code()
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
 
     directions_by_chats = await DataAccessLayer.get_directions_by_chats(callee_chat_ids)
 
@@ -52,6 +49,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
         due_tg_ids = [chat.tg_id for chat in directions_by_chats]
 
     to_fetch = []
+    clients = [client_cls() for client_cls in dispatcher.get_client_classes()]
 
     async with redis_client() as cache:
         for chat, directions in directions_by_chats.items():

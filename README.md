@@ -35,14 +35,19 @@ In this configuration redis cache will not work as well as /go command. But shou
 ├── Makefile <main commands to build project, set hooks, create db migrations>
 ├── migrations <alembic migrations, represent changes in database> 
 ├── src
-│   ├── bot.py <project's frontend>
+│   ├── api <api that holds a webhook for telegram bot (polling is not production ready solution) and notify endpoint for background task that detects price changes and sends notifications to users via tg bot>
+│   ├── bot <tg bot with all available commands>
+│   ├── cli <standalone cli app>
+│   ├── plugins <for each airline integration that bot tracks>
+│   │   ├── <airline integration name>
+│   │   ├── │   ├── __init__.py <for public interface of the plugin>
+│   │   ├── │   ├── airline.py <class that gets exposed as integration> 
+│   │   ├── │   ├── client.py <provides connection details to the airline to gather the data>
+│   │   ├── │   ├── parser.py <integration specific parser to parse the data from airline website url so that user can pass the flight link to the bot>
 │   ├── ... <every other file relates to project backend parts and has descriptive name>
-│   ├── fly_client <standalone cli app and library that handles connections to flyone>
-│   │   ├── __init__.py
-│   │   ├── cli.py
-│   │   └── client.py
 │   ├── task_<name>.py <peridict tasks that run on background and are triggered by schedule start with task_ prefix>
 ├── tests <autotests using pytest framework>
+├── configuration files <docker, nginx, alembic, uv, etc>
 
 ```
 

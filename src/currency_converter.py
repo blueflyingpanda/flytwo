@@ -1,22 +1,204 @@
+import json
 from decimal import Decimal
 
 import aiohttp
+from redis.asyncio import Redis
 
 
 class CurrencyConverter:
     BASE_URL = 'https://open.er-api.com/v6'
+    CACHE_TTL = 3600
+    SUPPORTED_CURRENCIES = frozenset(
+        (
+            'ZWL',
+            'SSP',
+            'DZD',
+            'MZN',
+            'ZWG',
+            'BOB',
+            'GNF',
+            'UGX',
+            'ETB',
+            'COP',
+            'BGN',
+            'XCD',
+            'XCG',
+            'KGS',
+            'HKD',
+            'LSL',
+            'IRR',
+            'RWF',
+            'TJS',
+            'GGP',
+            'DJF',
+            'HTG',
+            'FOK',
+            'CDF',
+            'TZS',
+            'BYN',
+            'CLF',
+            'EUR',
+            'AUD',
+            'BND',
+            'NOK',
+            'CLP',
+            'ALL',
+            'CUP',
+            'SHP',
+            'ZAR',
+            'TRY',
+            'KWD',
+            'LRD',
+            'PAB',
+            'LKR',
+            'SAR',
+            'NGN',
+            'JOD',
+            'ILS',
+            'MKD',
+            'ISK',
+            'AED',
+            'VND',
+            'BIF',
+            'QAR',
+            'FJD',
+            'MXN',
+            'CVE',
+            'NAD',
+            'CAD',
+            'VES',
+            'ARS',
+            'AZN',
+            'SBD',
+            'BTN',
+            'ERN',
+            'YER',
+            'RUB',
+            'KID',
+            'JEP',
+            'CNH',
+            'BDT',
+            'PLN',
+            'SRD',
+            'MAD',
+            'MYR',
+            'CNY',
+            'GIP',
+            'IQD',
+            'XDR',
+            'PKR',
+            'MRU',
+            'KYD',
+            'HUF',
+            'RON',
+            'SCR',
+            'SZL',
+            'BWP',
+            'GYD',
+            'TTD',
+            'DKK',
+            'JMD',
+            'WST',
+            'BZD',
+            'KZT',
+            'EGP',
+            'AOA',
+            'XOF',
+            'NPR',
+            'TWD',
+            'BRL',
+            'RSD',
+            'TND',
+            'SDG',
+            'MWK',
+            'KRW',
+            'USD',
+            'MNT',
+            'SLE',
+            'TOP',
+            'SLL',
+            'CHF',
+            'MGA',
+            'STN',
+            'FKP',
+            'BBD',
+            'GHS',
+            'TVD',
+            'KHR',
+            'MOP',
+            'SEK',
+            'HNL',
+            'PEN',
+            'BMD',
+            'VUV',
+            'NZD',
+            'TMT',
+            'ZMW',
+            'CRC',
+            'LBP',
+            'UAH',
+            'UYU',
+            'BAM',
+            'MDL',
+            'IDR',
+            'AMD',
+            'SYP',
+            'CZK',
+            'KMF',
+            'PYG',
+            'XAF',
+            'HRK',
+            'IMP',
+            'GEL',
+            'BHD',
+            'THB',
+            'MUR',
+            'GTQ',
+            'AFN',
+            'LYD',
+            'GMD',
+            'XPF',
+            'ANG',
+            'BSD',
+            'PHP',
+            'AWG',
+            'KES',
+            'NIO',
+            'SOS',
+            'LAK',
+            'PGK',
+            'DOP',
+            'INR',
+            'MMK',
+            'SGD',
+            'JPY',
+            'MVR',
+            'OMR',
+            'GBP',
+            'UZS',
+        )
+    )
 
-    def __init__(self, session: aiohttp.ClientSession):
+    def __init__(self, session: aiohttp.ClientSession, cache: Redis):
         self._session = session
+        self._cache = cache
 
-    async def convert(self, amount: Decimal, from_cur: str, to_cur: str) -> Decimal:
-        params = {'base': from_cur, 'symbols': to_cur}
-        async with self._session.get(f'{self.BASE_URL}/latest/{from_cur}', params=params) as r:
-            data = await r.json()
-            print(data)
-        return amount * Decimal(str(data['rates'][to_cur]))
+    async def _get_rates(self, base: str) -> dict[str, float]:
+        cache_key = f'currency_rates:{base}'
 
-    async def rates(self, base: str = 'EUR') -> dict[str, Decimal]:
+        if cached := await self._cache.get(cache_key):
+            return json.loads(cached)
+
         async with self._session.get(f'{self.BASE_URL}/latest/{base}') as r:
             data = await r.json()
-        return {cur: Decimal(str(rate)) for cur, rate in data['rates'].items()}
+
+        await self._cache.set(cache_key, json.dumps(data['rates']), ex=self.CACHE_TTL)
+        return data['rates']
+
+    async def convert(self, amount: Decimal, from_cur: str, to_cur: str) -> Decimal:
+        rates = await self._get_rates(from_cur.upper())
+        return amount * Decimal(str(rates[to_cur.upper()]))
+
+    async def rates(self, base: str = 'EUR') -> dict[str, Decimal]:
+        rates = await self._get_rates(base.upper())
+        return {cur: Decimal(str(rate)) for cur, rate in rates.items()}

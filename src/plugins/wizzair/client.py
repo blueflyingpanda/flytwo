@@ -88,7 +88,10 @@ class WizzairClient(BaseClient):
 
         self._airports_by_code = {
             city['iata']: Airport(
-                code=city['iata'], name=city['shortName'], country=city['countryName'], currency=city['currencyCode']
+                code=city['iata'],
+                name=city['shortName'].strip(),
+                country=city['countryName'],
+                currency=city['currencyCode'],
             )
             for city in data.get('cities', [])
         }

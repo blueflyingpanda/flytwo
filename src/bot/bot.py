@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from decimal import Decimal
 from random import randint
 
 import aiohttp
@@ -11,6 +12,7 @@ from bot.notifier import TgBotNotifier
 from cache import redis_client
 from client import Airport
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
+from currency_converter import CurrencyConverter
 from dal import DataAccessLayer
 from dispatcher import dispatcher
 from parser import ScheduleParser
@@ -54,6 +56,8 @@ async def cmd_help(message: types.Message):
         '/threshold <src> <dst> <value> - Set minimum price change to trigger a notification.\n'
         'Example: /threshold RMO EVN 20\n'
         'Note: value must be a non-negative whole number of EUR. Default is 0 (notify on any change).\n\n'
+        '/convert <amount> <from> <to> - Convert an integer amount between currencies.\n'
+        'Example: /convert 100 EUR MDL\n\n'
     )
     await message.reply(help_text)
 
@@ -310,8 +314,14 @@ async def cmd_airports(message: types.Message):
         for code in sorted(iter(airport_by_code.keys()))
         if (airport := airport_by_code[code])
     ]
+
+    chunk_size = 50  # tg api holds connection until timeout if message is too long
+    chunks = ['\n'.join(msgs[i : i + chunk_size]) for i in range(0, len(msgs), chunk_size)]
+
     notifier = TgBotNotifier(chat_id=message.chat.id)
-    await notifier.send_msgs(['\n'.join(msgs)])
+    for chunk in chunks:
+        # deliberately send sequentially to keep the alphabetical order of airport codes
+        await notifier.send_msgs([chunk])
 
 
 @router.message(Command(commands=['stats']))
@@ -457,6 +467,36 @@ async def cmd_threshold(message: types.Message):
         return
 
     await message.reply(f'Threshold updated: {threshold} EUR')
+
+
+@router.message(Command(commands=['convert']))
+async def cmd_convert(message: types.Message):
+    args = message.text.split()[1:]
+
+    if len(args) != 3:
+        await message.reply('Usage: /convert <amount> <from> <to>\nExample: /convert 100 EUR MDL')
+        return
+
+    amount_str, from_cur, to_cur = args
+    from_cur = from_cur.upper()
+    to_cur = to_cur.upper()
+
+    if not amount_str.isdigit():
+        await message.reply('Amount must be a positive integer.')
+        return
+
+    if from_cur not in CurrencyConverter.SUPPORTED_CURRENCIES:
+        await message.reply(f'Unsupported currency: {from_cur}')
+        return
+
+    if to_cur not in CurrencyConverter.SUPPORTED_CURRENCIES:
+        await message.reply(f'Unsupported currency: {to_cur}')
+        return
+    async with aiohttp.ClientSession() as session, redis_client() as cache:
+        currency_converter = CurrencyConverter(session, cache)
+        result = await currency_converter.convert(Decimal(amount_str), from_cur, to_cur)
+
+    await message.reply(f'{amount_str} {from_cur} = {round(result)} {to_cur}')
 
 
 dp.include_router(router)

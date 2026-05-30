@@ -59,6 +59,7 @@ class Flight(FlightBase):
     __table_args__ = (UniqueConstraint('src', 'dst', 'travel_date', name='uix_src_dst_date'),)
     history: Mapped[list[dict[str, int | str]]] = mapped_column(JSON, default=[], server_default='[]')
     airline: Mapped[str] = mapped_column(String, default='flyone', server_default=text("'flyone'"), index=True)
+    currency: Mapped[str] = mapped_column(String, default='EUR', server_default=text("'EUR'"))
 
     def __hash__(self) -> int:
         return hash(f'{self.src}{self.dst}{self.travel_date.strftime("%-d.%-m.%Y")}')

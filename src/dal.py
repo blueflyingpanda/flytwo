@@ -220,6 +220,8 @@ class DataAccessLayer:
                     'src': fetched_flight.from_airport.code,
                     'dst': fetched_flight.to_airport.code,
                     'travel_date': datetime.strptime(fetched_flight.travel_date, '%d.%m.%Y').date(),
+                    'airline': fetched_flight.airline,
+                    'currency': fetched_flight.currency,
                     'price': 0,  # in order to detect flights in FlightsChangeDetector
                 }
                 for fetched_flight in fetched_flights

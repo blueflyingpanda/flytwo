@@ -60,9 +60,11 @@ class TgBotNotifier:
     async def convert_prices(self, flights: list[Flight]) -> list[Flight]:
 
         async def convert(flight: Flight) -> Flight:
-            flight.price = await currency_converter.convert(flight.price, flight.currency, self.currency)
+            flight.price = round(await currency_converter.convert(flight.price, flight.currency, self.currency))
             if flight.prev_price is not None:
-                flight.prev_price = await currency_converter.convert(flight.prev_price, flight.currency, self.currency)
+                flight.prev_price = round(
+                    await currency_converter.convert(flight.prev_price, flight.currency, self.currency)
+                )
             return flight
 
         async with aiohttp.ClientSession() as session, redis_client() as cache:

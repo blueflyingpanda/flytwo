@@ -60,9 +60,9 @@ async def cmd_help(message: types.Message):
         'Note: value must be a non-negative whole number of EUR. Default is 0 (notify on any change).\n\n'
         '/convert <amount> <from> <to> - Convert an integer amount between currencies.\n'
         'Example: /convert 100 EUR MDL\n\n'
-        '/currency <code> - Sets default currenct for the chat.\n'
+        '/currency <code> - Sets default currency for the chat.\n'
         'Example: /currency MDL\n\n'
-        'Usage: /promo <src> <travel date> <price> - finds cheap flights with only departure and date specified.\n'
+        'Usage: /promo <src> <travel date> <price> - Finds cheap flights with only departure and date specified.\n'
         'Example: /promo RMO 23.05.2026 150\n\n'
     )
     await message.reply(help_text)

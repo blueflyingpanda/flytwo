@@ -146,7 +146,7 @@ class TgBotNotifier:
         await self.send_msgs([err_msg])
 
     @staticmethod
-    async def get_country_flag(airport: str, airport_by_code) -> str:
+    def get_country_flag(airport: str, airport_by_code) -> str:
         flag = ''
 
         try:

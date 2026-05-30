@@ -17,6 +17,7 @@ class FlightsFetcher:
     async def fetch_flights(
         direction: db.Direction, notifier: TgBotNotifier, cache: Redis, client: BaseClient
     ) -> tuple[list[Flight], list[Flight], TgBotNotifier] | None:
+        client_name = client.__class__.__name__
         travel_date = direction.travel_date.isoformat()
         src = direction.src
         dst = direction.dst
@@ -25,8 +26,8 @@ class FlightsFetcher:
         forward_value = backward_value = None
 
         if REDIS_TTL is not None:
-            forward_key = f'{src}{dst}{travel_date.replace("-", "")}'
-            backward_key = f'{dst}{src}{travel_date.replace("-", "")}'
+            forward_key = f'{client_name}{src}{dst}{travel_date.replace("-", "")}'
+            backward_key = f'{client_name}{dst}{src}{travel_date.replace("-", "")}'
 
             forward_value, backward_value = await cache.mget(forward_key, backward_key)
 

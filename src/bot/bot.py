@@ -548,6 +548,8 @@ async def cmd_currency(message: types.Message):
         await message.reply(str(e))
         return
 
+    await message.reply(f'Currency updated: {currency}')
+
 
 @router.message(Command(commands=['promo']))
 async def cmd_promo(message: types.Message):

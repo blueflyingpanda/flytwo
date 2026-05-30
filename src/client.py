@@ -5,8 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
-from conf import CURRENCY_SYMBOLS
-
 
 class Direction(Enum):
     FORWARD = 1
@@ -45,10 +43,6 @@ class Flight(BaseModel):
             )
 
         return super().__eq__(other)
-
-    @property
-    def currency_symbol(self) -> str:
-        return CURRENCY_SYMBOLS.get(self.currency, self.currency)
 
 
 FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])

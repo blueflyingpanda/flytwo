@@ -63,11 +63,8 @@ async def ping() -> Ping:
 
 @app.get('/directions')
 async def directions(user: Annotated[User, Depends(auth.get_current_user)]) -> list[UserDirection]:
-    fetched = await DataAccessLayer.get_directions_by_chats([int(user.chat_id)])
-    directions = list(fetched.values())
-
-    if directions:
-        directions = directions[0]
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats([int(user.chat_id)])
+    _, directions = next(iter(directions_by_chats.items()))
 
     return [UserDirection.model_validate(direction) for direction in directions]
 

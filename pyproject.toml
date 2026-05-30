@@ -93,6 +93,7 @@ ignore = [
     "E731",   # Do not assign a `lambda` expression, use a `def` - rule ignored
     "RUF005", # (*list_display, 'is_deleted') instead of concatenation list_display + ('is_deleted',) - rule ignored
     "RUF010", # f'Connection error: {e}' -> f'Connection error: {e!s}'
+    "RUF012", #  Mutable default value for class attribute
     "SIM105", # Use `contextlib.suppress(TypeError)` instead of `try`-`except`-`pass` - rule ignored
     "SIM108", # Use `getattr` with a default value instead of catching `AttributeError` - rule ignored
     "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements

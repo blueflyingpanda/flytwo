@@ -8,6 +8,15 @@ from redis.asyncio import Redis
 class CurrencyConverter:
     BASE_URL = 'https://open.er-api.com/v6'
     CACHE_TTL = 3600
+    CURRENCY_SYMBOLS = {
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'JPY': '¥',
+        'CNY': '¥',
+        'INR': '₹',
+        'RUB': '₽',
+    }
     SUPPORTED_CURRENCIES = frozenset(
         (
             'ZWL',
@@ -196,6 +205,8 @@ class CurrencyConverter:
         return data['rates']
 
     async def convert(self, amount: Decimal, from_cur: str, to_cur: str) -> Decimal:
+        if from_cur == to_cur:
+            return amount
         rates = await self._get_rates(from_cur.upper())
         return amount * Decimal(str(rates[to_cur.upper()]))
 

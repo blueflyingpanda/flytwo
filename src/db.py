@@ -26,6 +26,8 @@ class Chat(Base):
     schedule: Mapped[str] = mapped_column(String, default=DEFAULT_RRULE, server_default=text(f"'{DEFAULT_RRULE}'"))
     less: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text('true'))
     last_notified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    premium: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text('false'))
+    currency: Mapped[str] = mapped_column(String, default='EUR', server_default=text("'EUR'"))
 
     directions: Mapped[list['Direction']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 

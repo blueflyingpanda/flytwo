@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from decimal import Decimal
 from random import randint
@@ -10,13 +11,14 @@ from aiogram.types import BufferedInputFile
 
 from bot.notifier import TgBotNotifier
 from cache import redis_client
-from client import Airport
+from client import Airport, FareStats
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
 from currency_converter import CurrencyConverter
 from dal import DataAccessLayer
 from dispatcher import dispatcher
 from parser import ScheduleParser
 from plotter import MissingPriceHistoryError, Plotter
+from price import Price
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -58,6 +60,10 @@ async def cmd_help(message: types.Message):
         'Note: value must be a non-negative whole number of EUR. Default is 0 (notify on any change).\n\n'
         '/convert <amount> <from> <to> - Convert an integer amount between currencies.\n'
         'Example: /convert 100 EUR MDL\n\n'
+        '/currency <code> - Sets default currenct for the chat.\n'
+        'Example: /currency MDL\n\n'
+        'Usage: /promo <src> <travel date> <price> - finds cheap flights with only departure and date specified.\n'
+        'Example: /promo RMO 23.05.2026 150\n\n'
     )
     await message.reply(help_text)
 
@@ -114,9 +120,7 @@ async def cmd_add(message: types.Message):
         return
 
     try:
-        price = int(price_str)
-        if price <= 0:
-            raise ValueError('Price must be a positive whole number.')
+        price = Price(price_str)
     except ValueError:
         await message.reply('Invalid price. Please provide a whole positive number.')
         return
@@ -135,6 +139,20 @@ async def cmd_add(message: types.Message):
 
     if chat is None:
         await message.reply('Bot was not started yet!')
+        return
+
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats([message.chat.id])
+    _, directions = next(iter(directions_by_chats.items()))
+
+    is_new_direction = not any(direction.src == src and direction.dst == dst for direction in directions)
+    limit = 10 if chat.premium else 5
+
+    if is_new_direction and len(directions) >= limit:
+        err_msg = f'You have reached the limit of {limit} active directions. Use /remove'
+        if not chat.premium:
+            err_msg += ' or upgrade to premium.'
+
+        await message.reply(err_msg)
         return
 
     _, created = await DataAccessLayer.create_direction(
@@ -276,7 +294,8 @@ async def cmd_info(message: types.Message):
         f'Schedule: {chat.schedule or "OFF"}\n'
         f'Silent mode: {"ON" if chat.less else "OFF"}\n'
         f'Last notified: {chat.last_notified.strftime("%Y-%m-%d %H:%M:%S") if chat.last_notified else "never"}\n'
-        f'Directions: {len(directions)}'
+        f'Directions: {len(directions)}\n'
+        f'Premium: {"ON" if chat.premium else "OFF"}\n'
     )
 
 
@@ -288,7 +307,7 @@ async def cmd_directions(message: types.Message):
         await message.reply('Bot was not started yet!')
         return
 
-    _, directions = next(iter(directions_by_chats.items()))
+    chat, directions = next(iter(directions_by_chats.items()))
 
     if not directions:
         await message.reply('No directions found.')
@@ -298,7 +317,7 @@ async def cmd_directions(message: types.Message):
     msgs = []
 
     for direction in directions:
-        msg = await TgBotNotifier.form_direction_info(direction, airport_by_code)
+        msg = await TgBotNotifier.form_direction_info(direction, airport_by_code, chat.currency)
         msgs.append(msg)
 
     notifier = TgBotNotifier(chat_id=message.chat.id)
@@ -447,11 +466,9 @@ async def cmd_threshold(message: types.Message):
         return
 
     try:
-        threshold = int(value_str)
-        if threshold < 0:
-            raise ValueError
-    except ValueError:
-        await message.reply('Invalid value. Please provide a non-negative whole number.')
+        threshold = Price(value_str)
+    except ValueError as e:
+        await message.reply(str(e))
         return
 
     chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
@@ -466,7 +483,7 @@ async def cmd_threshold(message: types.Message):
         await message.reply('Direction not found. Add it first with /add')
         return
 
-    await message.reply(f'Threshold updated: {threshold} EUR')
+    await message.reply(f'Threshold updated: {threshold} {chat.currency}')
 
 
 @router.message(Command(commands=['convert']))
@@ -497,6 +514,110 @@ async def cmd_convert(message: types.Message):
         result = await currency_converter.convert(Decimal(amount_str), from_cur, to_cur)
 
     await message.reply(f'{amount_str} {from_cur} = {round(result)} {to_cur}')
+
+
+@router.message(Command(commands=['currency']))
+async def cmd_currency(message: types.Message):
+    args = message.text.split()[1:]
+
+    if len(args) != 1:
+        await message.reply('Usage: /currency <currency>\nExample: /currency MDL')
+        return
+
+    currency = args[0].upper()
+
+    if currency not in CurrencyConverter.SUPPORTED_CURRENCIES:
+        await message.reply(f'Unsupported currency: {currency}')
+        return
+
+    directions_by_chats = await DataAccessLayer.get_directions_by_chats([message.chat.id])
+
+    if not directions_by_chats:
+        await message.reply('Bot was not started yet!')
+        return
+
+    _, directions = next(iter(directions_by_chats.items()))
+
+    if directions:
+        await message.reply('Please /remove active directions before changing currency.')
+        return
+
+    try:
+        await DataAccessLayer.set_currency(currency, tg_id=message.chat.id)
+    except ValueError as e:
+        await message.reply(str(e))
+        return
+
+
+@router.message(Command(commands=['promo']))
+async def cmd_promo(message: types.Message):
+    args = message.text.split()[1:]
+
+    if len(args) != 3:
+        await message.reply('Usage: /promo <src> <travel date> <price>\nExample: /promo RMO 23.05.2026 150')
+        return
+
+    src, travel_date_str, price_str = args
+
+    try:
+        price = Price(price_str)
+    except ValueError as e:
+        await message.reply(str(e))
+        return
+
+    try:
+        travel_date = datetime.strptime(travel_date_str, '%d.%m.%Y').date()
+    except ValueError:
+        await message.reply('Invalid travel date format. Please use DD.MM.YYYY')
+        return
+
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
+
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
+
+    airport_by_code: dict[str, Airport] = await dispatcher.get_airport_by_code()
+    src = src.upper().strip()
+    if src not in airport_by_code:
+        await message.reply(f'Unsupported airport: {src}')
+        return
+
+    limit = 10 if chat.premium else 5
+
+    async def process_client(client_cls) -> FareStats:
+        try:
+            fare = await client_cls().get_fare_stats(dep=src, travel_date=travel_date, currency=chat.currency)
+        except Exception:
+            logging.exception('%s failed to fetch fare stats', client_cls.__name__)
+            raise
+        return fare
+
+    tasks = [process_client(cls) for cls in dispatcher.get_client_classes()]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    responses: list[FareStats] = [result for result in results if not isinstance(result, Exception)]
+
+    fares = []
+
+    for response in responses:
+        if isinstance(response, Exception):
+            continue
+
+        fares.extend([fare for fare in response.destinationFares if price is None or fare.price <= price])
+
+    notifier = TgBotNotifier(chat_id=message.chat.id)
+
+    for n, fare in enumerate(sorted(fares, key=lambda f: f.price), start=1):
+        if n > limit:
+            break
+
+        msg = await notifier.form_fare_info(
+            fare,
+            airport_by_code,
+            chat.currency,
+            travel_date,
+        )
+        await notifier.send_msgs([msg])  # sync to keep order
 
 
 dp.include_router(router)

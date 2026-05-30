@@ -58,13 +58,3 @@ JWT_ACCESS_TOKEN_EXPIRE = _settings.JWT_ACCESS_TOKEN_EXPIRE
 
 CORS_ORIGINS = _settings.CORS_ORIGINS
 DEBUG = _settings.DEBUG
-
-CURRENCY_SYMBOLS = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'CNY': '¥',
-    'INR': '₹',
-    'RUB': '₽',
-}

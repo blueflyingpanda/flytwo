@@ -54,7 +54,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
     async with redis_client() as cache:
         for chat, directions in directions_by_chats.items():
             for direction in directions:
-                msg_header = await TgBotNotifier.form_direction_info(direction, airport_by_code)
+                msg_header = await TgBotNotifier.form_direction_info(direction, airport_by_code, chat.currency)
 
                 notifier = TgBotNotifier(
                     chat_id=chat.tg_id,
@@ -62,6 +62,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
                     msg_header=msg_header,
                     notify_on_decrease=direction.notify_on_decrease,
                     threshold=direction.threshold,
+                    currency=chat.currency,
                 )
 
                 for client in clients:
@@ -99,7 +100,7 @@ async def main(chat_id: int | None = None, manual: bool = False):
         ):
             forward_msg, backward_msg = await asyncio.gather(notifier.form_msg(forwards), notifier.form_msg(backwards))
 
-            msg = (f'Forward flights 🛫:\n{forward_msg}\n\nBackward flights 🛬:\n{backward_msg}').replace('EUR', '€')
+            msg = f'Forward flights 🛫:\n{forward_msg}\n\nBackward flights 🛬:\n{backward_msg}'
 
             msgs_by_notifier[notifier].append(msg)
 

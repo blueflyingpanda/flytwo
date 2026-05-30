@@ -52,10 +52,11 @@ def display_fares(response: FareStats, airports_by_code: dict[str, Airport], lim
     travel_date = response.travelDate
 
     fares = [fare for fare in response.destinationFares if price is None or fare.price <= price]
+    fares = sorted(fares, key=lambda f: f.price)
     if limit >= 0:
         fares = fares[:limit]
 
-    for n, fare in enumerate(sorted(fares, key=lambda f: f.price), start=1):
+    for n, fare in enumerate(fares, start=1):
         destination = fare.destination
         dep_airport = airports_by_code.get(origin) or Airport()
         arr_airport = airports_by_code.get(destination) or Airport()

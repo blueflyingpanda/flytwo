@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from client import Flight as FetchedFlight
+from currency_converter import CurrencyConverter
 from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase, Setting
 from logs import logger
 from plotter import PricePoint
@@ -302,5 +303,15 @@ class DataAccessLayer:
         async with ASession() as session:
             stmt = insert(Setting).values(key=name, value=value)
             stmt = stmt.on_conflict_do_update(index_elements=['key'], set_={'value': value, 'active': True})
+            await session.execute(stmt)
+            await session.commit()
+
+    @staticmethod
+    async def set_currency(code: str, tg_id: int):
+        if code not in CurrencyConverter.SUPPORTED_CURRENCIES:
+            raise ValueError(f'Currency code "{code}" not supported')
+
+        async with ASession() as session:
+            stmt = update(Chat).filter_by(tg_id=tg_id).values(currency=code)
             await session.execute(stmt)
             await session.commit()

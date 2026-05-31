@@ -66,7 +66,9 @@ async def main(chat_id: int | None = None, manual: bool = False):
                 )
 
                 for client in clients:
-                    to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, client))
+                    airport_by_code = client.airport_by_code()  # cached
+                    if direction.src in airport_by_code and airport_by_code:
+                        to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, client))
 
     msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
 

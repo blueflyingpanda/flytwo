@@ -113,4 +113,4 @@ async def main(chat_id: int | None = None, manual: bool = False):
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(main(chat_id=449946657, manual=True))

@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 
 import db
 from bot.notifier import TgBotNotifier
-from client import FLIGHTS_TYPE_ADAPTER, BaseClient, ClientError, Flight
+from client import FLIGHTS_TYPE_ADAPTER, BaseClient, ClientError, Flight, MissingRouteError
 from conf import REDIS_TTL
 from dal import DataAccessLayer
 from logs import logger
@@ -38,6 +38,8 @@ class FlightsFetcher:
                 forward, backward = await client.get_flights(
                     dep=src, arr=dst, dep_date=travel_date, arr_date=travel_date, currency='EUR'
                 )
+            except MissingRouteError:
+                return [], [], notifier
             except ClientError as e:
                 err_msg = f'{e}'
                 logger.error(err_msg)

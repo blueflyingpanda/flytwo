@@ -3,7 +3,7 @@ from typing import Any
 
 import aiohttp
 
-from client import Airport, BaseClient, ClientError, Direction, FareStats, Flight
+from client import Airport, BaseClient, ClientError, Direction, FareStats, Flight, MissingRouteError
 
 
 class FlyoneClient(BaseClient):
@@ -35,7 +35,12 @@ class FlyoneClient(BaseClient):
 
                 if not result['isSuccess']:
                     msgs = result['msgs']
-                    raise ClientError('\n'.join(f'{msg["code"]}: {msg["msgText"]}' for msg in msgs))
+                    err_msg = '\n'.join(f'{msg["code"]}: {msg["msgText"]}' for msg in msgs)
+                    missing_route_code = 1029
+
+                    if msgs and msgs[0]['code'] == missing_route_code:
+                        raise MissingRouteError(err_msg)
+                    raise ClientError(err_msg)
 
                 return response_data
 

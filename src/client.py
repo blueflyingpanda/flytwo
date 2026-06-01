@@ -64,6 +64,10 @@ class ClientError(Exception):
     """Custom exception for client errors."""
 
 
+class MissingRouteError(ClientError):
+    """Route was not found."""
+
+
 class BaseClient(ABC):
     api_url: str
     auth_url: str

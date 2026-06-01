@@ -62,7 +62,7 @@ class Flight(FlightBase):
     currency: Mapped[str] = mapped_column(String, default='EUR', server_default=text("'EUR'"))
 
     def __hash__(self) -> int:
-        return hash(f'{self.src}{self.dst}{self.travel_date.strftime("%-d.%-m.%Y")}')
+        return hash(f'{self.airline}{self.src}{self.dst}{self.travel_date:%d.%m.%Y}')
 
 
 class Setting(Base):

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -21,14 +22,14 @@ class Airport(BaseModel):
 class Flight(BaseModel):
     from_airport: Airport
     to_airport: Airport
-    travel_date: str
+    travel_date: date
     currency: str
     price: Decimal
     airline: str
     prev_price: Decimal | None = None
 
     def __hash__(self) -> int:
-        return hash(f'{self.airline}{self.from_airport.code}{self.to_airport.code}{self.travel_date}')
+        return hash(f'{self.airline}{self.from_airport.code}{self.to_airport.code}{self.travel_date:%d.%m.%Y}')
 
     def __eq__(self, other) -> bool:
         import db  # import is placed here deliberately to be able to use the client without db
@@ -39,10 +40,13 @@ class Flight(BaseModel):
                 self.airline == other.airline
                 and self.from_airport.code == other.src
                 and self.to_airport.code == other.dst
-                and self.travel_date == f'{other.travel_date:%-d.%-m.%Y}'
+                and self.travel_date == other.travel_date
             )
 
         return super().__eq__(other)
+
+    def __lt__(self, other) -> bool:
+        return (self.travel_date, self.airline) < (other.travel_date, other.airline)
 
 
 FLIGHTS_TYPE_ADAPTER = TypeAdapter(list[Flight])

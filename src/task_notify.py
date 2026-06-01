@@ -70,8 +70,6 @@ async def main(chat_id: int | None = None, manual: bool = False):
                     if direction.src in airport_by_code and direction.dst in airport_by_code:
                         to_fetch.append(FlightsFetcher.fetch_flights(direction, notifier, cache, client))
 
-    msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
-
     results = await asyncio.gather(*to_fetch)
     results = [result for result in results if result is not None]
 
@@ -85,12 +83,28 @@ async def main(chat_id: int | None = None, manual: bool = False):
 
     changed_flights: set[Flight] = set(await FlightsChangeDetector.get_changed_flights(fetched_flights, manual))
 
+    flights_by_notifier: dict[TgBotNotifier, tuple[list[Flight], list[Flight]]] = {}
+
     for result in results:
         forwards, backwards, notifier = result
+        if notifier not in flights_by_notifier:
+            flights_by_notifier[notifier] = ([], [])
 
-        flights = chain(forwards, backwards)
+        fwd, bwd = flights_by_notifier[notifier]
+        fwd.extend(forwards)
+        bwd.extend(backwards)
 
-        flights = [flight for flight in flights if notifier.price_limit is None or flight.price <= notifier.price_limit]
+    msgs_by_notifier: dict[TgBotNotifier, list[str]] = defaultdict(list)
+
+    for notifier, (forwards, backwards) in flights_by_notifier.items():
+        forwards.sort()
+        backwards.sort()
+
+        flights = [
+            flight
+            for flight in chain(forwards, backwards)
+            if notifier.price_limit is None or flight.price <= notifier.price_limit
+        ]
 
         if display_all or any(
             flight in changed_flights
@@ -113,4 +127,4 @@ async def main(chat_id: int | None = None, manual: bool = False):
 
 
 if __name__ == '__main__':
-    asyncio.run(main(chat_id=449946657, manual=True))
+    asyncio.run(main(chat_id=449946657, manual=False))

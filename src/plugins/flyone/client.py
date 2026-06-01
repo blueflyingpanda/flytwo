@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -112,16 +113,16 @@ class FlyoneClient(BaseClient):
         for direction in result['flightSchedule']:
             is_back = direction['direction'] == Direction.BACKWARD.value
             days = []
-            year = direction['year']
+            year = int(direction['year'])
 
             for month in direction['month']:
-                month_num = month['month']
+                month_num = int(month['month'])
                 days.extend(
                     [
                         Flight(
                             from_airport=arr_airport if is_back else dep_airport,
                             to_airport=dep_airport if is_back else arr_airport,
-                            travel_date=f'{day["date"]}.{month_num}.{year}',
+                            travel_date=date(day=int(day['date']), month=month_num, year=year),
                             currency=currency,
                             price=Decimal(day['price']),
                             airline='flyone',

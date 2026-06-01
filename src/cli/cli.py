@@ -27,7 +27,7 @@ def display_flights(flights: list[Flight], price_limit: Decimal) -> None:
         f_airport = flight.from_airport
         t_airport = flight.to_airport
 
-        day, month, year = flight.travel_date.split('.')
+        day, month, year = str(flight.travel_date.day), str(flight.travel_date.month), str(flight.travel_date.year)
         formatted_date = f'{day.zfill(2)}.{month}.{year}'
 
         from_airport_str = f'{f_airport.code} <{f_airport.name}> |{f_airport.country}|'

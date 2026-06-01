@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -141,9 +142,7 @@ class WizzairClient(BaseClient):
                 amount = price_data.get('amount')
                 if not amount:
                     continue
-                date_str, _, _ = flight['date'].partition('T')  # "2026-06-03T00:00:00" -> "2026-06-03"
-                y, m, d = date_str.split('-')
-                travel_date = f'{int(d)}.{int(m)}.{y}'
+                travel_date = datetime.fromisoformat(flight['date']).date()
                 flights.append(
                     Flight(
                         from_airport=from_airport,

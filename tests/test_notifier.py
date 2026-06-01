@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from bot.notifier import TgBotNotifier
@@ -11,7 +12,7 @@ async def test_price_change(mock_currency_converter):
     new_flight = Flight(
         from_airport=Airport(code='RMO'),
         to_airport=Airport(code='EVN'),
-        travel_date='29.1.2024',
+        travel_date=date(day=29, month=1, year=2024),
         currency='EUR',
         price=Decimal(80),
         airline='flyone',
@@ -20,7 +21,7 @@ async def test_price_change(mock_currency_converter):
     increased_flight = Flight(
         from_airport=Airport(code='RMO'),
         to_airport=Airport(code='EVN'),
-        travel_date='30.1.2024',
+        travel_date=date(day=30, month=1, year=2024),
         currency='EUR',
         price=Decimal(100),
         prev_price=Decimal(75),
@@ -30,7 +31,7 @@ async def test_price_change(mock_currency_converter):
     decreased_flight = Flight(
         from_airport=Airport(code='RMO'),
         to_airport=Airport(code='EVN'),
-        travel_date='31.1.2024',
+        travel_date=date(day=31, month=1, year=2024),
         currency='EUR',
         price=Decimal(50),
         prev_price=Decimal(110),
@@ -41,7 +42,7 @@ async def test_price_change(mock_currency_converter):
 
     new, increased, decreased = msg.split('\n')
 
-    assert new == '29.01.2024:  80€ [flyone]   '
+    assert new == '29.01.2024:  80€ [flyone]'
     assert increased == '30.01.2024: 100€ [flyone] ❌ ⬆️ 25€ (was  75€)'
     assert decreased == '31.01.2024:  50€ [flyone] ✅ ⬇️ 60€ (was 110€)'
 

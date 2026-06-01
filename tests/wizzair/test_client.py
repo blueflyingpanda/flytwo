@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -120,7 +121,7 @@ class TestGetFlights:
         assert outbound[0] == Flight(
             from_airport=Airport(code='RMO', name='Chisinau', country='Moldova', currency='EUR'),
             to_airport=Airport(code='VRN', name='Verona', country='Italy', currency='EUR'),
-            travel_date='3.6.2026',
+            travel_date=date(day=3, month=6, year=2026),
             currency='EUR',
             price=Decimal('49.99'),
             airline='wizzair',
@@ -130,7 +131,7 @@ class TestGetFlights:
         assert inbound[0] == Flight(
             from_airport=Airport(code='VRN', name='Verona', country='Italy', currency='EUR'),
             to_airport=Airport(code='RMO', name='Chisinau', country='Moldova', currency='EUR'),
-            travel_date='10.6.2026',
+            travel_date=date(day=10, month=6, year=2026),
             currency='EUR',
             price=Decimal('59.99'),
             airline='wizzair',

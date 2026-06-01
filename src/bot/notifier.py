@@ -82,7 +82,7 @@ class TgBotNotifier:
         min_price, max_price = self._get_min_max_price(flights)
 
         for flight in flights:
-            day, month, year = flight.travel_date.split('.')
+            day, month, year = str(flight.travel_date.day), str(flight.travel_date.month), str(flight.travel_date.year)
             f_date = f'{day.zfill(2)}.{month.zfill(2)}.{year}'
 
             price = f'{flight.price}'
@@ -94,7 +94,7 @@ class TgBotNotifier:
             elif flight.price == max_price:
                 msg = f'{msg} ❌'
             else:
-                msg = f'{msg}   '
+                msg = f'{msg}'
 
             prev_price = f'{flight.prev_price or ""}'
 

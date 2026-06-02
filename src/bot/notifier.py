@@ -1,6 +1,6 @@
 import asyncio
 import random
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
 
 import aiohttp
@@ -165,7 +165,7 @@ class TgBotNotifier:
 
     @classmethod
     async def form_fare_info(
-        cls, src: str, fare: DestinationFare, airport_by_code: dict[str, Airport], currency: str, travel_date: datetime
+        cls, src: str, fare: DestinationFare, airport_by_code: dict[str, Airport], currency: str, travel_date: date
     ) -> str:
         dst = fare.destination
 

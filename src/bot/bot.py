@@ -625,6 +625,7 @@ async def cmd_promo(message: types.Message):
             break
 
         msg = await notifier.form_fare_info(
+            src,
             fare,
             airport_by_code,
             chat.currency,

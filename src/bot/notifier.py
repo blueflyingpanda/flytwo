@@ -184,6 +184,7 @@ class TgBotNotifier:
             f'To: {dst} {dst_flag}\n'
             f'Price: {converted_price} {currency}\n'
             f'Travel date: {travel_date.strftime("%d.%m.%Y")} ✈️\n'
+            f'Airline: {fare.airline}\n'
         )
 
     @classmethod

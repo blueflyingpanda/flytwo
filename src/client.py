@@ -56,6 +56,7 @@ class DestinationFare(BaseModel):
     destination: str
     price: Decimal
     currency: str = 'EUR'
+    airline: str = 'flyone'
 
 
 class FareStats(BaseModel):

@@ -185,6 +185,7 @@ class WizzairClient(BaseClient):
                     destination=outbound.get('arrivalStation', ''),
                     price=Decimal(str(price.get('amount'))),
                     currency=price.get('currencyCode', ''),
+                    airline='wizzair',
                 )
             )
 

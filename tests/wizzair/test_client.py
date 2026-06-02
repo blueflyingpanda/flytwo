@@ -195,7 +195,9 @@ class TestGetFareStats:
         assert result == FareStats(
             origin='RMO',
             travelDate='2026-05-28',
-            destinationFares=[DestinationFare(destination='VRN', price=Decimal('39.99'), currency='EUR')],
+            destinationFares=[
+                DestinationFare(destination='VRN', price=Decimal('39.99'), currency='EUR', airline='wizzair')
+            ],
         )
 
     async def test_skips_destinations_with_zero_price(self, client):

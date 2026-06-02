@@ -376,14 +376,23 @@ async def cmd_stats(message: types.Message):
         await message.reply('Source cannot be the same as destination.')
         return
 
+    chat = await DataAccessLayer.get_chat(tg_id=message.chat.id)
+
+    if chat is None:
+        await message.reply('Bot was not started yet!')
+        return
+
     price_history = await DataAccessLayer.get_direction_price_history(src, dst, dt)
 
-    try:
-        buffer = await Plotter.plot_price_history(src, dst, price_history)
-    except MissingPriceHistoryError as e:
-        tg_notifier = TgBotNotifier(chat_id=message.chat.id)
-        await tg_notifier.send_err(f'{e}')
-        return
+    async with aiohttp.ClientSession() as session, redis_client() as cache:
+        converter = CurrencyConverter(session, cache)
+
+        try:
+            buffer = await Plotter.plot_price_history(src, dst, price_history, chat.currency, converter)
+        except MissingPriceHistoryError as e:
+            tg_notifier = TgBotNotifier(chat_id=message.chat.id)
+            await tg_notifier.send_err(f'{e}')
+            return
 
     chart_image = BufferedInputFile(buffer.read(), filename='price_chart.png')
     buffer.close()

@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, NamedTuple
 
+from pydantic import BaseModel
 from sqlalchemy import Row, RowMapping, and_, case, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +11,6 @@ from client import Flight as FetchedFlight
 from currency_converter import CurrencyConverter
 from db import DEFAULT_RRULE, ASession, Chat, Direction, Flight, FlightBase, Setting
 from logs import logger
-from plotter import PricePoint
 
 
 class DBUtils:
@@ -56,6 +56,17 @@ class DBUtils:
                 return True  # Successfully deleted
 
         return False  # No record found to delete
+
+
+class FlightKey(NamedTuple):
+    airline: str
+    travel_date: date
+    currency: str
+
+
+class PricePoint(BaseModel):
+    price: int
+    dt: datetime
 
 
 class DataAccessLayer:
@@ -261,7 +272,9 @@ class DataAccessLayer:
             logger.info('%d flights updated', len(updated_price_by_flight))
 
     @staticmethod
-    async def get_direction_price_history(src: str, dst: str, dt: date | None = None) -> dict[date, list[PricePoint]]:
+    async def get_direction_price_history(
+        src: str, dst: str, dt: date | None = None
+    ) -> dict[FlightKey, list[PricePoint]]:
 
         async with ASession() as session:
             stmt = select(Flight).where(Flight.src == src, Flight.dst == dst)
@@ -272,19 +285,19 @@ class DataAccessLayer:
             result = await session.execute(stmt)
             flights = result.scalars().all()
 
-            dt = datetime.now()
+            current_dt = datetime.now()
 
-            # adding current price to history
             price_history_by_date = {}
 
             for flight in flights:
                 history = [PricePoint.model_validate(record) for record in flight.history]
 
                 if flight.price:
-                    history.append(PricePoint(price=flight.price, dt=dt))
+                    history.append(PricePoint(price=flight.price, dt=current_dt))
 
                 if history:
-                    price_history_by_date[flight.travel_date] = history
+                    key = FlightKey(airline=flight.airline, travel_date=flight.travel_date, currency=flight.currency)
+                    price_history_by_date[key] = history
 
             return price_history_by_date
 

@@ -20,7 +20,7 @@ from conf import BOT_SECRET, CORS_ORIGINS, DEBUG
 from dal import DataAccessLayer
 from dispatcher import dispatcher
 from logs import logger
-from plotter import PriceHistory
+from plotter import PriceHistory, PricePoint
 from task_notify import main as notify_main
 
 
@@ -70,10 +70,15 @@ async def directions(user: Annotated[User, Depends(auth.get_current_user)]) -> l
 
 
 @app.get('/price-history/{src}/{dst}', response_model=PriceHistory)
-@cache(expire=300, key_builder=price_history_key_builder)  # Cache for 5 minutes
+@cache(expire=300, key_builder=price_history_key_builder)
 async def price_history(src: str, dst: str, dt: date | None = None) -> PriceHistory:
     direction_price_history = await DataAccessLayer.get_direction_price_history(src.upper(), dst.upper(), dt)
-    return PriceHistory.model_validate(direction_price_history)
+
+    grouped: dict[str, dict[date, list[PricePoint]]] = {}
+    for key, price_points in direction_price_history.items():
+        grouped.setdefault(key.airline, {})[key.travel_date] = price_points
+
+    return PriceHistory.model_validate(grouped)
 
 
 @app.get('/airports', response_model=list[Airport])

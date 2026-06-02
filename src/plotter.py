@@ -1,30 +1,35 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pydantic import BaseModel, RootModel
+from pydantic import RootModel
+
+from currency_converter import CurrencyConverter
+from dal import FlightKey, PricePoint
 
 
 class MissingPriceHistoryError(Exception):
     """Raised when no price history is available"""
 
 
-class PricePoint(BaseModel):
-    price: int
-    dt: datetime
-
-
 class PriceHistory(RootModel):
-    root: dict[date, list[PricePoint]]
+    root: dict[str, dict[date, list[PricePoint]]]
 
 
 class Plotter:
     @staticmethod
-    async def plot_price_history(src: str, dst: str, price_history: dict[date, list[PricePoint]]) -> BytesIO:
+    async def plot_price_history(
+        src: str,
+        dst: str,
+        price_history: dict[FlightKey, list[PricePoint]],
+        convert_to: str,
+        converter: CurrencyConverter,
+    ) -> BytesIO:
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        offset = 0.3  # otherwise graph lines might overlap
+        offset = 0.3
 
         # Seaborn Tab10 colors. Avoiding seaborn for minimal dependencies
         colors = [
@@ -42,11 +47,9 @@ class Plotter:
 
         all_tracking_dates = set()
 
-        # Collect all tracking dates to establish a common X-axis
-        for histories in price_history.values():
-            for record in histories:
-                tracking_date = record.dt.date()
-                all_tracking_dates.add(tracking_date)
+        for records in price_history.values():
+            for record in records:
+                all_tracking_dates.add(record.dt.date())
 
         if not all_tracking_dates:
             raise MissingPriceHistoryError('No price history available')
@@ -55,12 +58,15 @@ class Plotter:
         x_dates = [min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)]
         x_ticks = np.array([(d - min_date).days for d in x_dates])  # Convert dates to numerical format
 
-        for i, (flight_date, records) in enumerate(sorted(price_history.items())):
+        for i, (key, records) in enumerate(
+            sorted(price_history.items(), key=lambda kv: (kv[0].airline, kv[0].travel_date))
+        ):
             daily_prices = {}
 
             for record in records:
                 tracking_date = record.dt.date()
-                daily_prices[tracking_date] = record.price
+                converted_price = await converter.convert(Decimal(record.price), key.currency, convert_to)
+                daily_prices[tracking_date] = float(converted_price)
 
             y_prices = []
             last_known_price = None
@@ -78,15 +84,18 @@ class Plotter:
             x_valid = np.array([x_ticks[j] for j in valid_indices])
             y_valid = np.array([y_prices[j] for j in valid_indices])
 
-            if len(x_valid) > 1:  # Ensure enough points for plotting
-                ax.plot(x_valid, y_valid, color=colors[i % len(colors)], linewidth=2, label=f'{flight_date}')
+            color = colors[i % len(colors)]
 
-            # Add markers at actual data points
-            ax.scatter(x_valid, y_valid, color=colors[i % len(colors)], s=50, marker='o', edgecolors='black')
+            if len(x_valid) > 1:  # Ensure enough points for plotting
+                ax.plot(x_valid, y_valid, color=color, linewidth=2, label=f'{key.airline} {key.travel_date}')
+
+            ax.scatter(x_valid, y_valid, color=color, s=50, marker='o', edgecolors='black')
+
+        currency_symbol = converter.CURRENCY_SYMBOLS.get(convert_to, convert_to)
 
         ax.set_title(f'Price History for {src} → {dst}')
         ax.set_xlabel('Tracking Date')
-        ax.set_ylabel('Price')
+        ax.set_ylabel(f'Price ({currency_symbol})')
         ax.legend(title='Flight Dates')
         ax.grid(True, linestyle='--', alpha=0.5)
         ax.set_xticks(x_ticks[:: max(1, len(x_ticks) // 10)])  # Limit tick labels for readability

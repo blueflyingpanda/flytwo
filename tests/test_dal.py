@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from dal import DataAccessLayer
+from dal import DataAccessLayer, FlightKey
 from db import Flight
 
 
@@ -138,7 +138,7 @@ async def test_get_direction_price_history(session, seed_flights, seed_flights_n
     today = date.today()
     result = await DataAccessLayer.get_direction_price_history('LAX', 'JFK')
 
-    history = result[today]
+    history = result[FlightKey(airline='flyone', travel_date=today, currency='EUR')]
 
     assert len(history) == 4  # 3 history + 1 current
     assert history[-2].price == 300  # previous price from history
@@ -146,7 +146,7 @@ async def test_get_direction_price_history(session, seed_flights, seed_flights_n
 
     result = await DataAccessLayer.get_direction_price_history('NYC', 'DCA')
 
-    history = result[today]
+    history = result[FlightKey(airline='flyone', travel_date=today, currency='EUR')]
 
     assert len(history) == 1  # No new entry since the price is 0. Free tickets don't exist
     assert history[-1].price == 100
@@ -165,7 +165,7 @@ async def test_get_direction_price_history_with_date(session, seed_flights_same_
 
     assert len(result) == 1
 
-    history = result[today]
+    history = result[FlightKey(airline='flyone', travel_date=today, currency='EUR')]
 
     assert len(history) == 2  # 1 history + 1 current
     assert history[-2].price == 100  # previous price from history

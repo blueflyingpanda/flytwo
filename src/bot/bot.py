@@ -598,7 +598,9 @@ async def cmd_promo(message: types.Message):
 
     async def process_client(client_cls) -> FareStats:
         try:
-            fare = await client_cls().get_fare_stats(dep=src, travel_date=travel_date, currency=chat.currency)
+            fare = await client_cls().get_fare_stats(
+                dep=src, travel_date=f'{travel_date:%Y-%m-%d}', currency=chat.currency
+            )
         except Exception:
             logging.exception('%s failed to fetch fare stats', client_cls.__name__)
             raise

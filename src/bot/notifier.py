@@ -165,19 +165,18 @@ class TgBotNotifier:
 
     @classmethod
     async def form_fare_info(
-        cls, src: str, fare: DestinationFare, airport_by_code: dict[str, Airport], currency: str, travel_date: date
+        cls,
+        src: str,
+        fare: DestinationFare,
+        airport_by_code: dict[str, Airport],
+        currency: str,
+        travel_date: date,
+        converted_price: Decimal,
     ) -> str:
         dst = fare.destination
 
         src_flag = cls.get_country_flag(src, airport_by_code)
         dst_flag = cls.get_country_flag(dst, airport_by_code)
-
-        price = fare.price
-        fare_currency = fare.currency
-
-        async with aiohttp.ClientSession() as session, redis_client() as cache:
-            currency_converter = CurrencyConverter(session, cache)
-            converted_price = await currency_converter.convert(Decimal(price), fare_currency, currency)
 
         return (
             f'From: {src} {src_flag}\n'

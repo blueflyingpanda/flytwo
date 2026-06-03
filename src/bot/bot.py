@@ -11,7 +11,7 @@ from aiogram.types import BufferedInputFile
 
 from bot.notifier import TgBotNotifier
 from cache import redis_client
-from client import Airport, FareStats
+from client import Airport, DestinationFare, FareStats
 from conf import API_URL, BOT_SECRET, BOT_TOKEN
 from currency_converter import CurrencyConverter
 from dal import DataAccessLayer
@@ -610,28 +610,32 @@ async def cmd_promo(message: types.Message):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     responses: list[FareStats] = [result for result in results if not isinstance(result, Exception)]
 
-    fares = []
-
-    for response in responses:
-        if isinstance(response, Exception):
-            continue
-
-        fares.extend([fare for fare in response.destinationFares if price is None or fare.price <= price])
-
     notifier = TgBotNotifier(chat_id=message.chat.id)
 
-    for n, fare in enumerate(sorted(fares, key=lambda f: f.price), start=1):
-        if n > limit:
-            break
+    async with aiohttp.ClientSession() as session, redis_client() as cache:
+        converter = CurrencyConverter(session, cache)
 
-        msg = await notifier.form_fare_info(
-            src,
-            fare,
-            airport_by_code,
-            chat.currency,
-            travel_date,
-        )
-        await notifier.send_msgs([msg])  # sync to keep order
+        fares: list[tuple[Decimal, DestinationFare]] = []
+
+        for response in responses:
+            for fare in response.destinationFares:
+                converted_price = round(await converter.convert(fare.price, fare.currency, chat.currency))
+                if price is None or converted_price <= price:
+                    fares.append((converted_price, fare))
+
+        for n, (converted_price, fare) in enumerate(sorted(fares, key=lambda x: x[0]), start=1):
+            if n > limit:
+                break
+
+            msg = await notifier.form_fare_info(
+                src,
+                fare,
+                airport_by_code,
+                chat.currency,
+                travel_date,
+                converted_price,
+            )
+            await notifier.send_msgs([msg])  # sync to keep order
 
 
 dp.include_router(router)

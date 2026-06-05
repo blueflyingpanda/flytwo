@@ -619,7 +619,7 @@ async def cmd_promo(message: types.Message):
 
         for response in responses:
             for fare in response.destinationFares:
-                converted_price = round(await converter.convert(fare.price, fare.currency, chat.currency))
+                converted_price = Decimal(round(await converter.convert(fare.price, fare.currency, chat.currency)))
                 if price is None or converted_price <= price:
                     fares.append((converted_price, fare))
 

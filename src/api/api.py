@@ -188,7 +188,7 @@ async def update_direction(
             chat_id=chat.id,
             src=src,
             dst=dst,
-            notify_on_decrease={NotifyMode.ANY: None, NotifyMode.DECREASE: False, NotifyMode.INCREASE: True}[
+            notify_on_decrease={NotifyMode.ANY: None, NotifyMode.INCREASE: False, NotifyMode.DECREASE: True}[
                 request.notify
             ],
         )

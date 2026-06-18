@@ -86,12 +86,13 @@ async def token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> T
 
     chat_id = str(chat.tg_id)
 
+    otp = None
+    cache_key = f'otp:{chat_id}'
+
     async with redis_client() as cache:
-        cache_key = f'otp:{chat_id}'
         otp = await cache.getdel(cache_key)
-        logger.info(
-            'key |%s|; otp |%s|, pass |form_data.password|', cache_key, otp.decode() if otp else otp, form_data.password
-        )
+
+    logger.info('key |%s|; otp |%s|, pass |%s|', cache_key, otp.decode() if otp else otp, form_data.password)
 
     if not otp or otp.decode() != form_data.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or missing code')

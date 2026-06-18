@@ -86,7 +86,7 @@ async def token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> T
 
     chat_id = str(chat.tg_id)
 
-    otp = None
+    otp = ''
     cache_key = f'otp:{chat_id}'
 
     async with redis_client() as cache:

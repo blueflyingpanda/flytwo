@@ -15,5 +15,5 @@ _access_handler.setFormatter(
     AccessFormatter('%(asctime)s - %(name)s - %(levelname)s - %(client_addr)s - "%(request_line)s" %(status_code)s')
 )
 access_logger = logging.getLogger('uvicorn.access')
-access_logger.addHandler(_access_handler)
+access_logger.handlers = [_access_handler]
 access_logger.propagate = False

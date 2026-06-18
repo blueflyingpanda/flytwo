@@ -14,6 +14,7 @@ from api.models import JwtPayload, TelegramAuthRequest, Token, User
 from cache import redis_client
 from conf import BOT_TOKEN, JWT_ACCESS_TOKEN_EXPIRE, JWT_SECRET
 from dal import DataAccessLayer
+from logs import logger
 
 JWT_ALGORITHM = 'HS256'
 TG_INITDATA_MAX_AGE = 86400  # seconds an initData payload stays valid
@@ -86,7 +87,11 @@ async def token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> T
     chat_id = str(chat.tg_id)
 
     async with redis_client() as cache:
-        otp = await cache.getdel(f'otp:{chat_id}')
+        cache_key = f'otp:{chat_id}'
+        otp = await cache.getdel(cache_key)
+        logger.info(
+            'key |%s|; otp |%s|, pass |form_data.password|', cache_key, otp.decode() if otp else otp, form_data.password
+        )
 
     if not otp or otp.decode() != form_data.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or missing code')

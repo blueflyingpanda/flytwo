@@ -38,9 +38,9 @@ services:
     env_file: .env
     environment:
       DB_HOST: flytwo_postgres_1
-      DB_PORT: 5432
+      DB_PORT: 6432
       REDIS_HOST: flytwo_redis_1
-      REDIS_PORT: 6379
+      REDIS_PORT: 6380
     expose:
       - "8080"
     depends_on:

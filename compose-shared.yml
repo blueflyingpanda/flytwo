@@ -37,9 +37,9 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     environment:
-      DB_HOST: postgres
+      DB_HOST: flytwo_postgres_1
       DB_PORT: 5432
-      REDIS_HOST: redis
+      REDIS_HOST: flytwo_redis_1
       REDIS_PORT: 6379
     expose:
       - "8080"

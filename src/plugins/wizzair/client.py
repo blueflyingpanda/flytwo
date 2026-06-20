@@ -15,9 +15,9 @@ class WizzairErrorNotifier:
 
     async def notify_on_version_mismatch(self, version: str):
         await self.tg_notifier.send_err(
-            f'\nWizzair API version has updated. {version} is no longer available.'
-            f'\nGo to https://www.wizzair.com/en-gb and look for https://be.wizzair.com/<VERSION>/Api requests.'
-            f'\nUpdate WIZZAIR_API_VERSION settings accordingly.\n'
+            f'Wizzair API version has updated. Version {version} is no longer available. '
+            'Go to https://www.wizzair.com/en-gb and look for https://be.wizzair.com/{{VERSION}}/Api requests. '
+            'Update WIZZAIR_API_VERSION settings accordingly.'
         )
 
 

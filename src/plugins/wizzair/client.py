@@ -4,8 +4,21 @@ from typing import Any
 
 import aiohttp
 
+from bot.notifier import TgBotNotifier
 from client import Airport, BaseClient, ClientError, DestinationFare, FareStats, Flight
 from dal import DataAccessLayer
+
+
+class WizzairErrorNotifier:
+    def __init__(self, maintainer_tg_id: int):
+        self.tg_notifier = TgBotNotifier(maintainer_tg_id)
+
+    async def notify_on_version_mismatch(self, version: str):
+        await self.tg_notifier.send_err(
+            f'\nWizzair API version has updated. {version} is no longer available.'
+            f'\nGo to https://www.wizzair.com/en-gb and look for https://be.wizzair.com/<VERSION>/Api requests.'
+            f'\nUpdate WIZZAIR_API_VERSION settings accordingly.\n'
+        )
 
 
 class WizzairClient(BaseClient):
@@ -43,6 +56,11 @@ class WizzairClient(BaseClient):
                 headers={'accept': 'application/json', 'content-type': 'application/json'},
             ) as response:
                 if response.status != 200:
+                    if response.status == 404:
+                        maintainer_tg_id = await DataAccessLayer.get_setting('MAINTAINER_TG_ID')
+                        err_notifier = WizzairErrorNotifier(int(maintainer_tg_id))
+                        await err_notifier.notify_on_version_mismatch(await self._get_version())
+
                     raise ClientError(f'Wizzair auth failed: {response.status}: {await response.text()}')
                 self._session_id = response.cookies['ASP.NET_SessionId'].value
                 self._token = response.cookies['RequestVerificationToken'].value

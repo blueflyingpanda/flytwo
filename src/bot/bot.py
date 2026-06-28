@@ -650,6 +650,7 @@ async def cmd_link(message: types.Message):
         return
 
     src, dst, travel_date_str = args
+    src, dst = src.upper(), dst.upper()
 
     try:
         travel_date = datetime.strptime(travel_date_str, '%d.%m.%Y').date()
@@ -674,7 +675,7 @@ async def cmd_link(message: types.Message):
     if not links:
         await message.reply('No links found!')
     else:
-        await message.reply('\n'.join(links))
+        await message.reply('\n\n'.join(links))
 
 
 dp.include_router(router)

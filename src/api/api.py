@@ -306,6 +306,7 @@ async def promo(
 @app.get('/link/{src}/{dst}/{travel_date}')
 async def link(src: str, dst: str, travel_date: date):
     airports_by_airline = await dispatcher.get_airports_by_airline()
+    src, dst = src.upper(), dst.upper()
 
     links = {}
 

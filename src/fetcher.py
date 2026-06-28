@@ -43,7 +43,15 @@ class FlightsFetcher:
             except ClientError as e:
                 err_msg = f'{e}'
                 logger.error(err_msg)
-                await notifier.send_err(err_msg)
+
+                if e.action_needed:
+                    maintainer_tg_id = await DataAccessLayer.get_setting('MAINTAINER_TG_ID')
+
+                    maintainer_notifier = TgBotNotifier(int(maintainer_tg_id))
+                    await maintainer_notifier.send_err(err_msg)
+                else:
+                    await notifier.send_err(err_msg)
+
                 return None
 
             if REDIS_TTL is not None:

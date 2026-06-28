@@ -68,6 +68,10 @@ class FareStats(BaseModel):
 class ClientError(Exception):
     """Custom exception for client errors."""
 
+    def __init__(self, *args, action_needed: bool = False):
+        super().__init__(*args)
+        self.action_needed = action_needed
+
 
 class MissingRouteError(ClientError):
     """Route was not found."""

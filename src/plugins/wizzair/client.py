@@ -4,21 +4,8 @@ from typing import Any
 
 import aiohttp
 
-from bot.notifier import TgBotNotifier
 from client import Airport, BaseClient, ClientError, DestinationFare, FareStats, Flight
 from dal import DataAccessLayer
-
-
-class WizzairErrorNotifier:
-    def __init__(self, maintainer_tg_id: int):
-        self.tg_notifier = TgBotNotifier(maintainer_tg_id)
-
-    async def notify_on_version_mismatch(self, version: str):
-        await self.tg_notifier.send_err(
-            f'404: Wizzair API version mismatch: version {version} is no longer available. '
-            'Go to https://www.wizzair.com/en-gb and look for https://be.wizzair.com/{{VERSION}}/Api requests. '
-            'Update WIZZAIR_API_VERSION settings accordingly.'
-        )
 
 
 class WizzairClient(BaseClient):
@@ -57,10 +44,13 @@ class WizzairClient(BaseClient):
             ) as response:
                 if response.status != 200:
                     if response.status == 404:
-                        maintainer_tg_id = await DataAccessLayer.get_setting('MAINTAINER_TG_ID')
-                        err_notifier = WizzairErrorNotifier(int(maintainer_tg_id))
-                        await err_notifier.notify_on_version_mismatch(await self._get_version())
-
+                        version = await self._get_version()
+                        raise ClientError(
+                            f'404: Wizzair API version mismatch: version {version} is no longer available. '
+                            'Go to https://www.wizzair.com/en-gb and look for https://be.wizzair.com/{VERSION}/Api requests. '
+                            'Update WIZZAIR_API_VERSION settings accordingly.',
+                            action_needed=True,
+                        )
                     raise ClientError(f'Wizzair auth failed: {response.status}: {await response.text()}')
                 self._session_id = response.cookies['ASP.NET_SessionId'].value
                 self._token = response.cookies['RequestVerificationToken'].value

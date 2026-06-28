@@ -16,6 +16,7 @@ from conf import API_URL, BOT_SECRET, BOT_TOKEN
 from currency_converter import CurrencyConverter
 from dal import DataAccessLayer
 from dispatcher import dispatcher
+from logs import logger
 from parser import ScheduleParser
 from plotter import MissingPriceHistoryError, Plotter
 from price import Price
@@ -64,6 +65,8 @@ async def cmd_help(message: types.Message):
         'Example: /currency MDL\n\n'
         'Usage: /promo <src> <travel date> <price> - Finds cheap flights with only departure and date specified.\n'
         'Example: /promo RMO 23.05.2026 150\n\n'
+        'Usage: /link <src> <dst> <travel date> - Find links for specified direction in supported airlines.\n'
+        'Example: /link RMO EVN 23.05.2026\n\n'
     )
     await message.reply(help_text)
 
@@ -636,6 +639,42 @@ async def cmd_promo(message: types.Message):
                 converted_price,
             )
             await notifier.send_msgs([msg])  # sync to keep order
+
+
+@router.message(Command(commands=['link']))
+async def cmd_link(message: types.Message):
+    args = message.text.split()[1:]
+
+    if len(args) != 3:
+        await message.reply('Usage: /link <src> <dst> <travel date>\nExample: /link RMO EVN 23.05.2026')
+        return
+
+    src, dst, travel_date_str = args
+
+    try:
+        travel_date = datetime.strptime(travel_date_str, '%d.%m.%Y').date()
+    except ValueError:
+        await message.reply('Invalid travel date format. Please use DD.MM.YYYY')
+        return
+
+    airports_by_airline = await dispatcher.get_airports_by_airline()
+
+    links = []
+
+    for airline, airport_by_code in airports_by_airline.items():
+        if src in airport_by_code and dst in airport_by_code:
+            link_constructor = dispatcher.pick_constructor(airline, src, dst, travel_date)
+
+            if not link_constructor:
+                logger.warning('No constructor for %s', airline)
+                continue
+
+            links.append(link_constructor.construct())
+
+    if not links:
+        await message.reply('No links found!')
+    else:
+        await message.reply('\n'.join(links))
 
 
 dp.include_router(router)

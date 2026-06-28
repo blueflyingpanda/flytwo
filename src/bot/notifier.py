@@ -2,6 +2,7 @@ import asyncio
 import random
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import aiohttp
 from pycountry import countries
@@ -10,9 +11,10 @@ from cache import redis_client
 from client import Airport, DestinationFare, Flight
 from conf import BOT_TOKEN
 from currency_converter import CurrencyConverter
+from dispatcher import dispatcher
 from logs import logger
 
-if False:
+if TYPE_CHECKING:
     import db
 
 
@@ -32,6 +34,7 @@ class TgBotNotifier:
         self.chat_id = chat_id
         self.price_limit = price_limit
         self.msg_header = msg_header
+        self.links = {}
         self.notify_on_decrease = notify_on_decrease
         self.threshold = threshold
         self.currency = currency
@@ -91,6 +94,16 @@ class TgBotNotifier:
 
             msg = f'{f_date}: {price.rjust(3)}{self.currency_symbol} [{flight.airline}]'
 
+            if flight.airline not in self.links:
+                link_constructor = dispatcher.pick_constructor(
+                    flight.airline, flight.from_airport.code, flight.to_airport.code, flight.travel_date
+                )
+
+                if not link_constructor:
+                    logger.warning('No constructor for %s', flight.airline)
+                else:
+                    self.links[flight.airline] = link_constructor.construct()
+
             if flight.price == min_price:
                 msg = f'{msg} ✅'
             elif flight.price == max_price:
@@ -128,7 +141,7 @@ class TgBotNotifier:
 
             for msg in msgs:
                 payload = {
-                    'text': f'<pre>{self.msg_header}\n\n{msg}</pre>',
+                    'text': f'<pre>{self.msg_header}\n\n{msg}</pre>\n\n{"\n".join(self.links.values())}'.strip(),
                     'chat_id': self.chat_id,
                     'parse_mode': 'HTML',
                 }

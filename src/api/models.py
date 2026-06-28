@@ -126,3 +126,12 @@ class PromoFare(BaseModel):
     currency: str
     airline: str
     travel_date: date
+
+
+class AirlineLink(BaseModel):
+    airline: str
+    url: str
+
+
+class LinkResponse(BaseModel):
+    links: list[AirlineLink]

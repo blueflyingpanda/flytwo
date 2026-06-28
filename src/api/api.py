@@ -15,11 +15,13 @@ from api.cache_utils import airports_key_builder, price_history_key_builder
 from api.common import get_chat_or_404
 from api.converters import convert_currency, convert_price_history
 from api.models import (
+    AirlineLink,
     ChatInfo,
     ConvertResponse,
     CreateDirectionRequest,
     CurrencyInfo,
     CurrencyRequest,
+    LinkResponse,
     MessageResponse,
     NotifyMode,
     NotifyRequest,
@@ -299,6 +301,25 @@ async def promo(
     chat = await get_chat_or_404(user.chat_id)
     price = parse_price(request.price)
     return await DirectionManager(chat).find_promo_fares(src=request.src, travel_date=request.travel_date, price=price)
+
+
+@app.get('/link/{src}/{dst}/{travel_date}')
+async def link(src: str, dst: str, travel_date: date):
+    airports_by_airline = await dispatcher.get_airports_by_airline()
+
+    links = {}
+
+    for airline, airport_by_code in airports_by_airline.items():
+        if src in airport_by_code and dst in airport_by_code:
+            link_constructor = dispatcher.pick_constructor(airline, src, dst, travel_date)
+
+            if not link_constructor:
+                logger.warning('No constructor for %s', airline)
+                continue
+
+            links[airline] = link_constructor.construct()
+
+    return LinkResponse(links=[AirlineLink(airline=airline, url=url) for airline, url in links.items()])
 
 
 @app.post('/webhook', include_in_schema=False)

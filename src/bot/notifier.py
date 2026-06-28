@@ -141,7 +141,7 @@ class TgBotNotifier:
 
             for msg in msgs:
                 payload = {
-                    'text': f'<pre>{self.msg_header}\n\n{msg}</pre>\n\n{"\n".join(self.links.values())}'.strip(),
+                    'text': f'<pre>{self.msg_header}\n\n{msg}</pre>\n\n{"\n\n".join(self.links.values())}'.strip(),
                     'chat_id': self.chat_id,
                     'parse_mode': 'HTML',
                 }
